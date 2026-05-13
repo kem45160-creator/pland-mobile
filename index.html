@@ -30,13 +30,14 @@
     --radius: 14px;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { font-size: 14px; }
+  html { font-size: 14px; overflow-x: hidden; }
   body {
     font-family: 'Kanit', 'DM Mono', sans-serif;
     background: linear-gradient(145deg, #aecff5 0%, #c3dff8 30%, #d8eeff 60%, #cce5f8 100%);
     background-attachment: fixed;
     color: var(--text);
     min-height: 100vh;
+    width: 100%;
     overflow-x: hidden;
   }
   body::before {
@@ -59,6 +60,7 @@
     box-shadow: 0 2px 16px rgba(80,130,220,0.10);
     padding: 10px 14px;
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    width: 100%;
   }
   .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .topbar-logo { font-size: 20px; flex-shrink: 0; }
@@ -86,7 +88,9 @@
   }
   .settings-overlay.open { display: block; }
   .settings-panel {
-    position: fixed; top: 0; right: 0; bottom: 0; width: min(320px, 92vw);
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(320px, 92vw);
+    max-width: 100vw;
     background: rgba(240,248,255,0.96);
     backdrop-filter: blur(32px) saturate(200%);
     border-left: 1px solid rgba(255,255,255,0.9);
@@ -160,7 +164,14 @@
   @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
 
   /* ── MAIN SCROLL ── */
-  .main { position: relative; z-index: 1; padding: 12px 12px 32px; display: flex; flex-direction: column; gap: 12px; }
+  .main {
+    position: relative; z-index: 1;
+    padding: 12px 12px 32px;
+    display: flex; flex-direction: column; gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
 
   /* ── GLASS CARD ── */
   .card {
@@ -170,6 +181,7 @@
     border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.82);
     box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.95);
     overflow: hidden;
+    min-width: 0;
   }
   .card-header {
     padding: 12px 14px 10px; border-bottom: 1px solid var(--border);
@@ -179,7 +191,7 @@
   .card-subtitle { font-size: 10.5px; color: var(--text-muted); margin-top: 1px; }
   .card-body { padding: 12px 14px; }
 
-  /* ── STAT CARDS — 2×2 grid ── */
+  /* ── STAT CARDS ── */
   .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .stat-card {
     background: rgba(255,255,255,0.55);
@@ -188,6 +200,7 @@
     border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.82);
     box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.95);
     padding: 13px 13px 11px; position: relative; overflow: hidden;
+    min-width: 0;
   }
   .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2.5px; background:var(--acc,var(--blue)); }
   .stat-label { font-size: 10px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; line-height: 1.3; }
@@ -202,7 +215,7 @@
     background-size: 400px 100%; animation: shimmer 1.4s infinite linear; border-radius: 5px;
   }
 
-  /* ── DONUTS — 3 col compact ── */
+  /* ── DONUTS ── */
   .donuts-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .donut-mini-card {
     background: rgba(255,255,255,0.52);
@@ -211,6 +224,7 @@
     box-shadow: var(--shadow);
     padding: 10px 8px 10px;
     display: flex; flex-direction: column; align-items: center; gap: 5px;
+    min-width: 0;
   }
   .donut-mini-label { font-size: 10px; font-weight: 600; color: #1e40af; text-align: center; line-height: 1.2; }
   .donut-mini-wrap { position: relative; height: 72px; width: 72px; display: flex; align-items: center; justify-content: center; }
@@ -245,6 +259,7 @@
     box-shadow: 0 6px 28px rgba(37,99,235,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
     padding: 14px;
     color: #1e3a8a;
+    min-width: 0;
   }
   .tom-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
   .tom-date-lbl { font-size: 10px; font-weight: 500; opacity: .6; text-transform: uppercase; letter-spacing: .8px; }
@@ -272,7 +287,6 @@
   .tom-total-num { font-size: 32px; font-weight: 700; line-height: 1; }
   .tom-total-sub { font-size: 11px; opacity: .55; margin-top: 1px; }
 
-  /* tomorrow lists — 2 cols */
   .tom-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .tom-list-col { display: flex; flex-direction: column; gap: 3px; max-height: 140px; overflow-y: auto; }
   .tom-item-row {
@@ -299,17 +313,22 @@
   .filter-btn.active { background: rgba(219,234,254,.85); color: var(--blue); border-color: rgba(37,99,235,.4); }
   .filter-btn:hover:not(.active) { background: rgba(255,255,255,.85); }
 
-  .table-scroll { overflow-x: auto; overflow-y: auto; max-height: 340px; }
+  .table-scroll {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 340px;
+    contain: inline-size;
+  }
   .data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 420px; }
   .data-table th {
-  padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 600;
-  color: var(--text-dim); text-transform: uppercase; letter-spacing: .4px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(225, 238, 252, 0.97);
-  backdrop-filter: blur(20px) saturate(200%);
-  -webkit-backdrop-filter: blur(20px) saturate(200%);
-  white-space: nowrap; position: sticky; top: 0; z-index: 1;
-  box-shadow: 0 1px 0 rgba(160,200,255,0.4);
+    padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 600;
+    color: var(--text-dim); text-transform: uppercase; letter-spacing: .4px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(225,238,252,0.97);
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
+    white-space: nowrap; position: sticky; top: 0; z-index: 1;
+    box-shadow: 0 1px 0 rgba(160,200,255,0.4);
   }
   .data-table td { padding: 8px 10px; border-bottom: 1px solid rgba(148,163,184,.12); color: var(--text); }
   .data-table tr:last-child td { border-bottom: none; }
@@ -343,26 +362,63 @@
 
   .inv-id { font-family: 'DM Mono', monospace; font-size: 10.5px; color: var(--blue); font-weight: 600; }
 
-  /* ── MODAL ── */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(100,130,180,.3); backdrop-filter: blur(6px); z-index: 200; align-items: flex-end; justify-content: center; }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: rgba(245,251,255,0.96);
-    backdrop-filter: blur(32px);
-    border: 1px solid rgba(255,255,255,0.95);
-    border-radius: 18px 18px 0 0;
-    width: 100%; max-width: 600px;
-    max-height: 88vh; overflow: hidden; display: flex; flex-direction: column;
-    box-shadow: 0 -12px 60px rgba(99,120,180,.22);
-    animation: slideUp .28s cubic-bezier(.4,0,.2,1);
+  /* ── MODAL — กลางจอ ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,20,60,0.40);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 200;
+    /* จัดให้ modal อยู่กลางจอทั้งแนวนอนและแนวตั้ง */
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
   }
-  @keyframes slideUp { from{transform:translateY(50%);opacity:0} to{transform:translateY(0);opacity:1} }
-  .modal-handle { width: 36px; height: 4px; border-radius: 2px; background: rgba(148,163,184,.4); margin: 8px auto 0; flex-shrink: 0; }
-  .modal-header { padding: 10px 16px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .modal-title { font-size: 13px; font-weight: 700; }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: rgba(245,251,255,0.97);
+    backdrop-filter: blur(36px) saturate(200%);
+    -webkit-backdrop-filter: blur(36px) saturate(200%);
+    border: 1px solid rgba(255,255,255,0.95);
+    /* เปลี่ยนจาก rounded top-only เป็น rounded ทุกด้าน */
+    border-radius: 20px;
+    width: 100%;
+    max-width: 600px;
+    /* ความสูงสูงสุดไม่เกิน 85% ของหน้าจอ */
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+      0 24px 80px rgba(30,58,138,0.28),
+      0 8px 24px rgba(30,58,138,0.16),
+      inset 0 1px 0 rgba(255,255,255,0.9);
+    animation: popIn .26s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  /* เปลี่ยน animation จาก slideUp เป็น popIn แบบ scale */
+  @keyframes popIn {
+    from { transform: scale(0.92); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+
+  /* ซ่อน handle (ไม่จำเป็นเมื่ออยู่กลางจอ) */
+  .modal-handle { display: none; }
+
+  .modal-header {
+    padding: 14px 18px 13px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: rgba(240,248,255,0.95);
+    flex-shrink: 0;
+  }
+  .modal-title { font-size: 14px; font-weight: 700; color: #1e3a8a; }
   .modal-close {
     background: rgba(148,163,184,.2); border: 1px solid var(--border);
-    cursor: pointer; width: 26px; height: 26px; border-radius: 50%; font-size: 12px;
+    cursor: pointer; width: 28px; height: 28px; border-radius: 50%; font-size: 13px;
     display: flex; align-items: center; justify-content: center; color: var(--text-muted);
     transition: all .15s; flex-shrink: 0;
   }
@@ -511,7 +567,7 @@
     </div>
   </div>
 
-  <!-- TOMORROW CARD (ย้ายขึ้นมาอยู่ก่อน donuts) -->
+  <!-- TOMORROW CARD -->
   <div class="tomorrow-card" id="tomorrowCard">
     <div class="tom-header-row">
       <div>
@@ -567,7 +623,7 @@
     </div>
   </div>
 
-  <!-- DONUTS 3 col (ย้ายลงมาอยู่หลัง tomorrow card) -->
+  <!-- DONUTS 3 col -->
   <div class="donuts-row">
     <!-- Yesterday -->
     <div class="donut-mini-card">
@@ -640,8 +696,8 @@
       </div>
     </div>
   </div>
-  
-  <!-- NOT READY TABLE — v4: เพิ่มคอลัมน์ลูกค้าหน้า Inv ID -->
+
+  <!-- NOT READY TABLE -->
   <div class="card">
     <div class="card-header" style="flex-wrap:wrap;gap:8px">
       <div>
@@ -678,7 +734,7 @@
 
 </main>
 
-<!-- MODAL (bottom sheet) -->
+<!-- MODAL — กลางจอ -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
@@ -691,7 +747,7 @@
     </div>
     <div class="modal-body">
       <div class="modal-tabs" id="modalTabs"></div>
-      <div class="table-scroll" style="max-height:calc(88vh - 180px)">
+      <div class="table-scroll" style="max-height:calc(85vh - 160px)">
         <table class="data-table">
           <thead id="modalThead"></thead>
           <tbody id="modalBody"></tbody>
@@ -737,7 +793,7 @@ function deriveMonthLabel(data) {
 // ─── CUSTOMER CHIP HELPER ───
 function custChip(c) {
   if(!c) return '<span style="color:var(--text-dim);font-size:10px">—</span>';
-  return `<span style="font-size:11px;color:var(--text)" title="${c}">${c}</span>`; 
+  return `<span style="font-size:11px;color:var(--text)" title="${c}">${c}</span>`;
 }
 
 // ─── SETTINGS PANEL ───
@@ -885,7 +941,6 @@ function initBarChart() {
   const overlay=document.getElementById('barChartOverlay');
   if(overlay) overlay.style.display='none';
 
-  // % label plugin — แสดงเสมอ ย่อ font ตาม bar width อัตโนมัติ
   const pctPlugin={
     id:'pctLabel',
     afterDatasetsDraw(chart){
@@ -994,13 +1049,11 @@ function statusBadge(type) {
   return m[type]||'';
 }
 
-// ─── MODAL TABLE — v4: ลูกค้า column ก่อน Inv ID ทุก tab ───
 function renderModalTable(tab) {
   const d=DATA[window._mDate]||{ready:[],not_ready:[],late_list:[],overdue:[],sent_list:[]};
   const thead=document.getElementById('modalThead');
   const tbody=document.getElementById('modalBody');
 
-  // ─── ALL tab ───
   if(tab==='all'){
     const rows=[...(d.ready||[]).map(r=>({...r,_type:'ready'})),...(d.not_ready||[]).map(r=>({...r,_type:'not_ready'})),...(d.overdue||[]).map(r=>({...r,_type:'overdue'})),...(d.late_list||[]).map(r=>({...r,_type:'late'})),...(d.sent_list||[]).map(r=>({...r,_type:'sent'}))];
     thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>Due</th><th>Stock</th><th>ขาด/ส่ง</th><th>สถานะ</th></tr>`;
@@ -1024,7 +1077,6 @@ function renderModalTable(tab) {
     return;
   }
 
-  // ─── SENT tab ───
   if(tab==='sent'){
     const rows=d.sent_list||[];
     thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>Due</th><th>Shipment</th><th>สถานะ</th></tr>`;
@@ -1039,7 +1091,6 @@ function renderModalTable(tab) {
     return;
   }
 
-  // ─── OVERDUE tab ───
   if(tab==='overdue'){
     const rows=d.overdue||[];
     thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>Due เดิม</th><th>Stock</th><th>Balance PO</th><th>สถานะ</th></tr>`;
@@ -1055,7 +1106,6 @@ function renderModalTable(tab) {
     return;
   }
 
-  // ─── LATE tab ───
   if(tab==='late'){
     const rows=d.late_list||[];
     thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>Due เดิม</th><th>วันที่ส่ง</th><th>Shipment</th><th>สถานะ</th></tr>`;
@@ -1071,7 +1121,6 @@ function renderModalTable(tab) {
     return;
   }
 
-  // ─── READY / NOT READY tab ───
   let rows=tab==='ready'?(d.ready||[]).map(r=>({...r,status:'ready'})):(d.not_ready||[]).map(r=>({...r,status:'not_ready'}));
   thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>Due</th><th>Stock</th><th>ขาด</th><th>สถานะ</th></tr>`;
   tbody.innerHTML=rows.map((r,i)=>{
@@ -1125,7 +1174,6 @@ function renderTable(filter) {
       shortCell=sh>0?`<div style="font-weight:700;color:var(--red);font-size:11.5px">${fmt(sh)}</div><div class="shortage-bar"><div class="shortage-fill" style="width:${pct}%"></div></div>`:`<span class="badge badge-green">Stock พอ</span>`;
       statusCell=`<span class="badge badge-red">❌ ไม่พร้อม</span>`;
     }
-    // v4: ลูกค้า chip ก่อน Inv ID
     return `<tr>
       <td style="color:var(--text-muted);font-size:10px;font-weight:600">${idx+1}</td>
       <td>${custChip(r.c)}</td>
