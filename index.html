@@ -507,7 +507,63 @@
     </div>
   </div>
 
-  <!-- DONUTS 3 col -->
+  <!-- TOMORROW CARD (ย้ายขึ้นมาอยู่ก่อน donuts) -->
+  <div class="tomorrow-card" id="tomorrowCard">
+    <div class="tom-header-row">
+      <div>
+        <div class="tom-date-lbl" id="tomDateLabel">📅 พรุ่งนี้</div>
+        <div class="tom-total-num" id="tom-total">—</div>
+        <div class="tom-total-sub">รายการที่ต้องจัดส่ง</div>
+      </div>
+      <button class="tom-toggle-btn" id="tomToggleBtn" onclick="toggleTomView(event)">
+        <span id="tomToggleIcon">🔖</span>
+        <span id="tomToggleLabel">Inv ID</span>
+      </button>
+    </div>
+    <div class="tom-pills">
+      <div class="tom-pill green" id="tomReadyPill">
+        <div class="pill-val green" id="tom-ready">—</div>
+        <div class="pill-lbl">✅ พร้อมส่ง</div>
+      </div>
+      <div class="tom-pill red" id="tomNotReadyPill">
+        <div class="pill-val red" id="tom-notready">—</div>
+        <div class="pill-lbl">❌ ไม่พร้อมส่ง</div>
+      </div>
+    </div>
+    <div class="tom-lists">
+      <div id="tomReadyList" class="tom-list-col"></div>
+      <div id="tomNotReadyList" class="tom-list-col"></div>
+    </div>
+    <div class="tom-hint">แตะที่การ์ดเพื่อดูรายละเอียด</div>
+  </div>
+
+  <!-- BAR CHART -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title" id="barChartTitle">แผนการจัดส่งรายวัน</div>
+        <div class="card-subtitle">แตะแท่งกราฟเพื่อดูรายละเอียด</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="chart-wrapper">
+        <canvas id="barChart"></canvas>
+        <div class="no-data-overlay" id="barChartOverlay">
+          <div class="ndo-icon">📊</div>
+          <div class="ndo-text">รอโหลดข้อมูล...</div>
+        </div>
+      </div>
+      <div class="legend-wrap" style="margin-top:10px">
+        <div class="legend-item"><div class="legend-dot" style="background:#22A652"></div>พร้อมส่ง</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#E05C63"></div>ไม่พร้อมส่ง</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(208,129,141,0.75);border:1px solid #D0818D"></div>ค้างส่ง</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(231,181,49,0.55);border:1px solid #E7B531"></div>ส่งล่าช้า</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(78,134,222,0.6);border:1px solid #4E86DE"></div>ส่งแล้ว</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DONUTS 3 col (ย้ายลงมาอยู่หลัง tomorrow card) -->
   <div class="donuts-row">
     <!-- Yesterday -->
     <div class="donut-mini-card">
@@ -580,63 +636,7 @@
       </div>
     </div>
   </div>
-
-  <!-- BAR CHART -->
-  <div class="card">
-    <div class="card-header">
-      <div>
-        <div class="card-title" id="barChartTitle">แผนการจัดส่งรายวัน</div>
-        <div class="card-subtitle">แตะแท่งกราฟเพื่อดูรายละเอียด</div>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="chart-wrapper">
-        <canvas id="barChart"></canvas>
-        <div class="no-data-overlay" id="barChartOverlay">
-          <div class="ndo-icon">📊</div>
-          <div class="ndo-text">รอโหลดข้อมูล...</div>
-        </div>
-      </div>
-      <div class="legend-wrap" style="margin-top:10px">
-        <div class="legend-item"><div class="legend-dot" style="background:#22A652"></div>พร้อมส่ง</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#E05C63"></div>ไม่พร้อมส่ง</div>
-        <div class="legend-item"><div class="legend-dot" style="background:rgba(208,129,141,0.75);border:1px solid #D0818D"></div>ค้างส่ง</div>
-        <div class="legend-item"><div class="legend-dot" style="background:rgba(231,181,49,0.55);border:1px solid #E7B531"></div>ส่งล่าช้า</div>
-        <div class="legend-item"><div class="legend-dot" style="background:rgba(78,134,222,0.6);border:1px solid #4E86DE"></div>ส่งแล้ว</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TOMORROW CARD -->
-  <div class="tomorrow-card" id="tomorrowCard">
-    <div class="tom-header-row">
-      <div>
-        <div class="tom-date-lbl" id="tomDateLabel">📅 พรุ่งนี้</div>
-        <div class="tom-total-num" id="tom-total">—</div>
-        <div class="tom-total-sub">รายการที่ต้องจัดส่ง</div>
-      </div>
-      <button class="tom-toggle-btn" id="tomToggleBtn" onclick="toggleTomView(event)">
-        <span id="tomToggleIcon">🔖</span>
-        <span id="tomToggleLabel">Inv ID</span>
-      </button>
-    </div>
-    <div class="tom-pills">
-      <div class="tom-pill green" id="tomReadyPill">
-        <div class="pill-val green" id="tom-ready">—</div>
-        <div class="pill-lbl">✅ พร้อมส่ง</div>
-      </div>
-      <div class="tom-pill red" id="tomNotReadyPill">
-        <div class="pill-val red" id="tom-notready">—</div>
-        <div class="pill-lbl">❌ ไม่พร้อมส่ง</div>
-      </div>
-    </div>
-    <div class="tom-lists">
-      <div id="tomReadyList" class="tom-list-col"></div>
-      <div id="tomNotReadyList" class="tom-list-col"></div>
-    </div>
-    <div class="tom-hint">แตะที่การ์ดเพื่อดูรายละเอียด</div>
-  </div>
-
+  
   <!-- NOT READY TABLE — v4: เพิ่มคอลัมน์ลูกค้าหน้า Inv ID -->
   <div class="card">
     <div class="card-header" style="flex-wrap:wrap;gap:8px">
