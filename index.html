@@ -299,7 +299,7 @@
   .filter-btn:hover:not(.active) { background: rgba(255,255,255,.85); }
 
   .table-scroll { overflow-x: auto; overflow-y: auto; max-height: 340px; }
-  .data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 520px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 440px; }
   .data-table th {
     padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 600;
     color: var(--text-dim); text-transform: uppercase; letter-spacing: .4px;
@@ -639,7 +639,6 @@
         <thead>
           <tr>
             <th style="width:30px">#</th>
-            <th>ลูกค้า</th>
             <th style="width:110px">Inventory ID</th>
             <th>รายละเอียด</th>
             <th style="width:68px">วันที่</th>
@@ -650,7 +649,7 @@
           </tr>
         </thead>
         <tbody id="notReadyBody">
-          <tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-muted)">รอโหลดข้อมูล...</td></tr>
+          <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">รอโหลดข้อมูล...</td></tr>
         </tbody>
       </table>
     </div>
@@ -859,10 +858,14 @@ function initBarChart() {
   const overlay=document.getElementById('barChartOverlay');
   if(overlay) overlay.style.display='none';
 
+  // ── % label plugin — เล็กลง ไม่แสดงถ้าแท่งเล็กเกิน ──
   const pctPlugin={
     id:'pctLabel',
     afterDatasetsDraw(chart){
-      const{ctx,scales:{x,y}}=chart;
+      const{ctx,scales:{x,y},chartArea}=chart;
+      const barW = chartArea.width / Math.max(allDates.length, 1);
+      // ซ่อน label ถ้าแท่งแคบเกิน 18px ต่อวัน
+      if(barW < 18) return;
       ctx.save();
       allDates.forEach((d,i)=>{
         const day=DATA[d]||{r:0,n:0};
@@ -870,10 +873,12 @@ function initBarChart() {
         if(!rn) return;
         const pct=Math.round((day.r||0)/rn*100);
         const total=rn+(day.ov||0)+(day.l||0)+(day.sent||0);
-        ctx.font='bold 9px Kanit,sans-serif';
-        ctx.fillStyle=pct>=80?'#2d7d72':pct>=50?'#f59e0b':'#b85c5c';
+        // ขนาดตัวอักษรปรับตาม barW
+        const fs = barW < 28 ? 6 : barW < 36 ? 7 : 7.5;
+        ctx.font=`600 ${fs}px Kanit,sans-serif`;
+        ctx.fillStyle=pct>=80?'#1a6644':pct>=50?'#92400e':'#9b1c1c';
         ctx.textAlign='center'; ctx.textBaseline='bottom';
-        ctx.fillText(pct+'%',x.getPixelForValue(i),y.getPixelForValue(total)-4);
+        ctx.fillText(pct+'%', x.getPixelForValue(i), y.getPixelForValue(total)-3);
       });
       ctx.restore();
     }
@@ -891,7 +896,7 @@ function initBarChart() {
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
-      layout:{padding:{top:20}},
+      layout:{padding:{top:16}},
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{
@@ -967,9 +972,10 @@ function renderModalTable(tab) {
   const thead=document.getElementById('modalThead');
   const tbody=document.getElementById('modalBody');
 
+  // ─── ALL tab ───
   if(tab==='all'){
     const rows=[...(d.ready||[]).map(r=>({...r,_type:'ready'})),...(d.not_ready||[]).map(r=>({...r,_type:'not_ready'})),...(d.overdue||[]).map(r=>({...r,_type:'overdue'})),...(d.late_list||[]).map(r=>({...r,_type:'late'})),...(d.sent_list||[]).map(r=>({...r,_type:'sent'}))];
-    thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Stock</th><th>ขาด/ส่ง</th><th>สถานะ</th></tr>`;
+    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Stock</th><th>ขาด/ส่ง</th><th>สถานะ</th></tr>`;
     tbody.innerHTML=rows.map((r,i)=>{
       let extra='';
       if(r._type==='ready') extra=`<span class="badge badge-green" style="font-size:9.5px">Stock พอ</span>`;
@@ -977,37 +983,84 @@ function renderModalTable(tab) {
       else if(r._type==='overdue') extra=`<div style="font-weight:700;color:var(--red);font-size:11px">BPO: ${fmt(r.balPO)}</div>`;
       else if(r._type==='late')    extra=`<div style="font-weight:700;color:var(--green);font-size:11px">+${fmt(r.shipped)}</div>`;
       else if(r._type==='sent')    extra=`<div style="font-weight:700;color:#4E86DE;font-size:11px">${fmt(r.shipped)}</div>`;
-      return `<tr><td style="color:var(--text-muted);font-size:10px">${i+1}</td><td style="font-size:11px;font-weight:600">${r.c||'—'}</td><td class="inv-id">${r.inv||'—'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.d||''}">${r.d||'—'}</td><td style="font-weight:600">${fmt(r.due)}</td><td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td><td>${extra}</td><td>${statusBadge(r._type)}</td></tr>`;
-    }).join('')||`<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
+      return `<tr>
+        <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
+        <td class="inv-id">${r.inv||'—'}</td>
+        <td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.d||''}">${r.d||'—'}</td>
+        <td style="font-weight:600">${fmt(r.due)}</td>
+        <td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td>
+        <td>${extra}</td>
+        <td>${statusBadge(r._type)}</td>
+      </tr>`;
+    }).join('')||`<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
     return;
   }
+
+  // ─── SENT tab ───
   if(tab==='sent'){
     const rows=d.sent_list||[];
-    thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Shipment</th><th>สถานะ</th></tr>`;
-    tbody.innerHTML=rows.map((r,i)=>`<tr><td style="color:var(--text-muted);font-size:10px">${i+1}</td><td style="font-size:11px;font-weight:600">${r.c}</td><td class="inv-id">${r.inv||'—'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td><td>${fmt(r.due)}</td><td style="font-weight:700;color:#4E86DE">${fmt(r.shipped)}</td><td><span class="badge badge-sent">📦 ส่งแล้ว</span></td></tr>`).join('')||`<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
+    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Shipment</th><th>สถานะ</th></tr>`;
+    tbody.innerHTML=rows.map((r,i)=>`<tr>
+      <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
+      <td class="inv-id">${r.inv||'—'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td>
+      <td>${fmt(r.due)}</td>
+      <td style="font-weight:700;color:#4E86DE">${fmt(r.shipped)}</td>
+      <td><span class="badge badge-sent">📦 ส่งแล้ว</span></td>
+    </tr>`).join('')||`<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
     return;
   }
+
+  // ─── OVERDUE tab ───
   if(tab==='overdue'){
     const rows=d.overdue||[];
-    thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>รายละเอียด</th><th>Due เดิม</th><th>Stock</th><th>Balance PO</th><th>สถานะ</th></tr>`;
-    tbody.innerHTML=rows.map((r,i)=>`<tr><td style="color:var(--text-muted);font-size:10px">${i+1}</td><td style="font-size:11px;font-weight:600">${r.c}</td><td class="inv-id">${r.inv||'—'}</td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td><td><span style="color:#f87171;font-weight:700">${thaiDate(r.origDue||r.dk)}</span></td><td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td><td style="font-weight:700;color:var(--red)">${fmt(r.balPO)}</td><td><span class="badge badge-red">🔴 ค้างส่ง</span></td></tr>`).join('')||`<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการค้างส่ง 🎉</td></tr>`;
+    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>รายละเอียด</th><th>Due เดิม</th><th>Stock</th><th>Balance PO</th><th>สถานะ</th></tr>`;
+    tbody.innerHTML=rows.map((r,i)=>`<tr>
+      <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
+      <td class="inv-id">${r.inv||'—'}</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td>
+      <td><span style="color:#f87171;font-weight:700">${thaiDate(r.origDue||r.dk)}</span></td>
+      <td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td>
+      <td style="font-weight:700;color:var(--red)">${fmt(r.balPO)}</td>
+      <td><span class="badge badge-red">🔴 ค้างส่ง</span></td>
+    </tr>`).join('')||`<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการค้างส่ง 🎉</td></tr>`;
     return;
   }
+
+  // ─── LATE tab ───
   if(tab==='late'){
     const rows=d.late_list||[];
-    thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>รายละเอียด</th><th>Due เดิม</th><th>วันที่ส่ง</th><th>Shipment</th><th>สถานะ</th></tr>`;
-    tbody.innerHTML=rows.map((r,i)=>`<tr><td style="color:var(--text-muted);font-size:10px">${i+1}</td><td style="font-size:11px;font-weight:600">${r.c}</td><td class="inv-id">${r.inv||'—'}</td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td><td style="font-weight:600;color:var(--amber)">${thaiDate(r.origDue)}</td><td style="font-weight:600">${thaiDate(r.shipDate)}</td><td style="font-weight:700;color:var(--green)">${fmt(r.shipped)}</td><td><span class="badge badge-amber">⏰ ล่าช้า</span></td></tr>`).join('')||`<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการล่าช้า 🎉</td></tr>`;
+    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>รายละเอียด</th><th>Due เดิม</th><th>วันที่ส่ง</th><th>Shipment</th><th>สถานะ</th></tr>`;
+    tbody.innerHTML=rows.map((r,i)=>`<tr>
+      <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
+      <td class="inv-id">${r.inv||'—'}</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td>
+      <td style="font-weight:600;color:var(--amber)">${thaiDate(r.origDue)}</td>
+      <td style="font-weight:600">${thaiDate(r.shipDate)}</td>
+      <td style="font-weight:700;color:var(--green)">${fmt(r.shipped)}</td>
+      <td><span class="badge badge-amber">⏰ ล่าช้า</span></td>
+    </tr>`).join('')||`<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการล่าช้า 🎉</td></tr>`;
     return;
   }
+
+  // ─── READY / NOT READY tab ───
   let rows=tab==='ready'?(d.ready||[]).map(r=>({...r,status:'ready'})):(d.not_ready||[]).map(r=>({...r,status:'not_ready'}));
-  thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Stock</th><th>ขาด</th><th>สถานะ</th></tr>`;
+  thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Stock</th><th>ขาด</th><th>สถานะ</th></tr>`;
   tbody.innerHTML=rows.map((r,i)=>{
     const sh=r.status==='not_ready'?(r.sh||0):0;
-    return `<tr><td style="color:var(--text-muted);font-size:10px">${i+1}</td><td style="font-size:11px;font-weight:600">${r.c}</td><td class="inv-id">${r.inv||'—'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td><td>${fmt(r.due)}</td><td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td><td>${r.status==='not_ready'&&sh>0?`<div style="font-weight:700;color:var(--red);font-size:12px">${fmt(sh)}</div><div class="shortage-bar"><div class="shortage-fill" style="width:100%"></div></div>`:`<span class="badge badge-green">Stock พอ</span>`}</td><td>${r.status==='ready'?'<span class="badge badge-green">✅ พร้อมส่ง</span>':'<span class="badge badge-red">❌ ไม่พร้อม</span>'}</td></tr>`;
-  }).join('')||`<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
+    return `<tr>
+      <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
+      <td class="inv-id">${r.inv||'—'}</td>
+      <td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td>
+      <td>${fmt(r.due)}</td>
+      <td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td>
+      <td>${r.status==='not_ready'&&sh>0?`<div style="font-weight:700;color:var(--red);font-size:12px">${fmt(sh)}</div><div class="shortage-bar"><div class="shortage-fill" style="width:100%"></div></div>`:`<span class="badge badge-green">Stock พอ</span>`}</td>
+      <td>${r.status==='ready'?'<span class="badge badge-green">✅ พร้อมส่ง</span>':'<span class="badge badge-red">❌ ไม่พร้อม</span>'}</td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
 }
 
-// ─── TABLE ───
+// ─── NOT READY TABLE ───
 function filterTable(f) {
   ['all','yd','td','tm'].forEach(x=>document.getElementById('btn-'+x).classList.toggle('active',x===f));
   renderTable(f);
@@ -1046,16 +1099,15 @@ function renderTable(filter) {
     }
     return `<tr>
       <td style="color:var(--text-muted);font-size:10px;font-weight:600">${idx+1}</td>
-      <td style="font-size:11px;font-weight:600">${r.c}</td>
       <td class="inv-id">${r.inv||'—'}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.d}">${r.d}</td>
+      <td style="max-width:175px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.d}">${r.d}</td>
       <td><span style="font-size:10.5px;font-weight:600;color:${dateColor}">${dateLabel}</span></td>
       <td>${fmt(r.due)}</td>
       <td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td>
       <td>${shortCell}</td>
       <td>${statusCell}</td>
     </tr>`;
-  }).join('')||`<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-muted)">ไม่มีรายการที่ยังไม่พร้อม 🎉</td></tr>`;
+  }).join('')||`<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">ไม่มีรายการที่ยังไม่พร้อม 🎉</td></tr>`;
 }
 
 // ─── FILE HANDLING ───
@@ -1196,7 +1248,6 @@ async function parseExcelFileFromBytes(uint8Array, fileName) {
 
     const now=new Date();
     const t=now.toLocaleTimeString('th-TH');
-    const dt=now.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
     const luEl=document.getElementById('lastUpdatedBadge');
     if(luEl) luEl.textContent=`${t}`;
 
