@@ -299,7 +299,7 @@
   .filter-btn:hover:not(.active) { background: rgba(255,255,255,.85); }
 
   .table-scroll { overflow-x: auto; overflow-y: auto; max-height: 340px; }
-  .data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 440px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 360px; }
   .data-table th {
     padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 600;
     color: var(--text-dim); text-transform: uppercase; letter-spacing: .4px;
@@ -620,7 +620,7 @@
     <div class="tom-hint">แตะที่การ์ดเพื่อดูรายละเอียด</div>
   </div>
 
-  <!-- NOT READY TABLE -->
+  <!-- NOT READY TABLE — ลบคอลัมน์รายละเอียดออก -->
   <div class="card">
     <div class="card-header" style="flex-wrap:wrap;gap:8px">
       <div>
@@ -640,7 +640,6 @@
           <tr>
             <th style="width:30px">#</th>
             <th style="width:110px">Inventory ID</th>
-            <th>รายละเอียด</th>
             <th style="width:68px">วันที่</th>
             <th style="width:54px">Due</th>
             <th style="width:54px">Stock</th>
@@ -649,7 +648,7 @@
           </tr>
         </thead>
         <tbody id="notReadyBody">
-          <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">รอโหลดข้อมูล...</td></tr>
+          <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">รอโหลดข้อมูล...</td></tr>
         </tbody>
       </table>
     </div>
@@ -858,14 +857,15 @@ function initBarChart() {
   const overlay=document.getElementById('barChartOverlay');
   if(overlay) overlay.style.display='none';
 
-  // ── % label plugin — เล็กลง ไม่แสดงถ้าแท่งเล็กเกิน ──
+  // ── % label plugin
+  // แสดงเสมอ ย่อ font ตาม bar width อัตโนมัติ ไม่ซ่อน
   const pctPlugin={
     id:'pctLabel',
     afterDatasetsDraw(chart){
       const{ctx,scales:{x,y},chartArea}=chart;
-      const barW = chartArea.width / Math.max(allDates.length, 1);
-      // ซ่อน label ถ้าแท่งแคบเกิน 18px ต่อวัน
-      if(barW < 18) return;
+      const numDates = Math.max(allDates.length, 1);
+      const barW = chartArea.width / numDates;
+
       ctx.save();
       allDates.forEach((d,i)=>{
         const day=DATA[d]||{r:0,n:0};
@@ -873,12 +873,17 @@ function initBarChart() {
         if(!rn) return;
         const pct=Math.round((day.r||0)/rn*100);
         const total=rn+(day.ov||0)+(day.l||0)+(day.sent||0);
-        // ขนาดตัวอักษรปรับตาม barW
-        const fs = barW < 28 ? 6 : barW < 36 ? 7 : 7.5;
+
+        // ปรับ font size ตาม barW — ยิ่งแคบยิ่งเล็ก แต่แสดงเสมอ min 5px
+        const fs = Math.max(5, Math.min(8, barW * 0.28));
         ctx.font=`600 ${fs}px Kanit,sans-serif`;
         ctx.fillStyle=pct>=80?'#1a6644':pct>=50?'#92400e':'#9b1c1c';
-        ctx.textAlign='center'; ctx.textBaseline='bottom';
-        ctx.fillText(pct+'%', x.getPixelForValue(i), y.getPixelForValue(total)-3);
+        ctx.textAlign='center';
+        ctx.textBaseline='bottom';
+
+        // วาง label เหนือแท่ง padding เล็กลงเมื่อแคบ
+        const gap = barW < 20 ? 1 : 3;
+        ctx.fillText(pct+'%', x.getPixelForValue(i), y.getPixelForValue(total)-gap);
       });
       ctx.restore();
     }
@@ -896,7 +901,7 @@ function initBarChart() {
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
-      layout:{padding:{top:16}},
+      layout:{padding:{top:14}},
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{
@@ -967,6 +972,7 @@ function statusBadge(type) {
   return m[type]||'';
 }
 
+// ─── MODAL TABLE — ลบคอลัมน์รายละเอียดออกทุก tab ───
 function renderModalTable(tab) {
   const d=DATA[window._mDate]||{ready:[],not_ready:[],late_list:[],overdue:[],sent_list:[]};
   const thead=document.getElementById('modalThead');
@@ -975,7 +981,7 @@ function renderModalTable(tab) {
   // ─── ALL tab ───
   if(tab==='all'){
     const rows=[...(d.ready||[]).map(r=>({...r,_type:'ready'})),...(d.not_ready||[]).map(r=>({...r,_type:'not_ready'})),...(d.overdue||[]).map(r=>({...r,_type:'overdue'})),...(d.late_list||[]).map(r=>({...r,_type:'late'})),...(d.sent_list||[]).map(r=>({...r,_type:'sent'}))];
-    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Stock</th><th>ขาด/ส่ง</th><th>สถานะ</th></tr>`;
+    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>Due</th><th>Stock</th><th>ขาด/ส่ง</th><th>สถานะ</th></tr>`;
     tbody.innerHTML=rows.map((r,i)=>{
       let extra='';
       if(r._type==='ready') extra=`<span class="badge badge-green" style="font-size:9.5px">Stock พอ</span>`;
@@ -985,79 +991,74 @@ function renderModalTable(tab) {
       else if(r._type==='sent')    extra=`<div style="font-weight:700;color:#4E86DE;font-size:11px">${fmt(r.shipped)}</div>`;
       return `<tr>
         <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
-        <td class="inv-id">${r.inv||'—'}</td>
-        <td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.d||''}">${r.d||'—'}</td>
+        <td class="inv-id" title="${r.d||''}">${r.inv||'—'}</td>
         <td style="font-weight:600">${fmt(r.due)}</td>
         <td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td>
         <td>${extra}</td>
         <td>${statusBadge(r._type)}</td>
       </tr>`;
-    }).join('')||`<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
+    }).join('')||`<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
     return;
   }
 
   // ─── SENT tab ───
   if(tab==='sent'){
     const rows=d.sent_list||[];
-    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Shipment</th><th>สถานะ</th></tr>`;
+    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>Due</th><th>Shipment</th><th>สถานะ</th></tr>`;
     tbody.innerHTML=rows.map((r,i)=>`<tr>
       <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
-      <td class="inv-id">${r.inv||'—'}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td>
+      <td class="inv-id" title="${r.d||''}">${r.inv||'—'}</td>
       <td>${fmt(r.due)}</td>
       <td style="font-weight:700;color:#4E86DE">${fmt(r.shipped)}</td>
       <td><span class="badge badge-sent">📦 ส่งแล้ว</span></td>
-    </tr>`).join('')||`<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
+    </tr>`).join('')||`<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
     return;
   }
 
   // ─── OVERDUE tab ───
   if(tab==='overdue'){
     const rows=d.overdue||[];
-    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>รายละเอียด</th><th>Due เดิม</th><th>Stock</th><th>Balance PO</th><th>สถานะ</th></tr>`;
+    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>Due เดิม</th><th>Stock</th><th>Balance PO</th><th>สถานะ</th></tr>`;
     tbody.innerHTML=rows.map((r,i)=>`<tr>
       <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
-      <td class="inv-id">${r.inv||'—'}</td>
-      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td>
+      <td class="inv-id" title="${r.d||''}">${r.inv||'—'}</td>
       <td><span style="color:#f87171;font-weight:700">${thaiDate(r.origDue||r.dk)}</span></td>
       <td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td>
       <td style="font-weight:700;color:var(--red)">${fmt(r.balPO)}</td>
       <td><span class="badge badge-red">🔴 ค้างส่ง</span></td>
-    </tr>`).join('')||`<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการค้างส่ง 🎉</td></tr>`;
+    </tr>`).join('')||`<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการค้างส่ง 🎉</td></tr>`;
     return;
   }
 
   // ─── LATE tab ───
   if(tab==='late'){
     const rows=d.late_list||[];
-    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>รายละเอียด</th><th>Due เดิม</th><th>วันที่ส่ง</th><th>Shipment</th><th>สถานะ</th></tr>`;
+    thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>Due เดิม</th><th>วันที่ส่ง</th><th>Shipment</th><th>สถานะ</th></tr>`;
     tbody.innerHTML=rows.map((r,i)=>`<tr>
       <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
-      <td class="inv-id">${r.inv||'—'}</td>
-      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td>
+      <td class="inv-id" title="${r.d||''}">${r.inv||'—'}</td>
       <td style="font-weight:600;color:var(--amber)">${thaiDate(r.origDue)}</td>
       <td style="font-weight:600">${thaiDate(r.shipDate)}</td>
       <td style="font-weight:700;color:var(--green)">${fmt(r.shipped)}</td>
       <td><span class="badge badge-amber">⏰ ล่าช้า</span></td>
-    </tr>`).join('')||`<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการล่าช้า 🎉</td></tr>`;
+    </tr>`).join('')||`<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการล่าช้า 🎉</td></tr>`;
     return;
   }
 
   // ─── READY / NOT READY tab ───
   let rows=tab==='ready'?(d.ready||[]).map(r=>({...r,status:'ready'})):(d.not_ready||[]).map(r=>({...r,status:'not_ready'}));
-  thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Stock</th><th>ขาด</th><th>สถานะ</th></tr>`;
+  thead.innerHTML=`<tr><th>#</th><th>Inv ID</th><th>Due</th><th>Stock</th><th>ขาด</th><th>สถานะ</th></tr>`;
   tbody.innerHTML=rows.map((r,i)=>{
     const sh=r.status==='not_ready'?(r.sh||0):0;
     return `<tr>
       <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
-      <td class="inv-id">${r.inv||'—'}</td>
-      <td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td>
+      <td class="inv-id" title="${r.d||''}">${r.inv||'—'}</td>
       <td>${fmt(r.due)}</td>
       <td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td>
       <td>${r.status==='not_ready'&&sh>0?`<div style="font-weight:700;color:var(--red);font-size:12px">${fmt(sh)}</div><div class="shortage-bar"><div class="shortage-fill" style="width:100%"></div></div>`:`<span class="badge badge-green">Stock พอ</span>`}</td>
       <td>${r.status==='ready'?'<span class="badge badge-green">✅ พร้อมส่ง</span>':'<span class="badge badge-red">❌ ไม่พร้อม</span>'}</td>
     </tr>`;
-  }).join('')||`<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
+  }).join('')||`<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
 }
 
 // ─── NOT READY TABLE ───
@@ -1097,17 +1098,17 @@ function renderTable(filter) {
       shortCell=sh>0?`<div style="font-weight:700;color:var(--red);font-size:11.5px">${fmt(sh)}</div><div class="shortage-bar"><div class="shortage-fill" style="width:${pct}%"></div></div>`:`<span class="badge badge-green">Stock พอ</span>`;
       statusCell=`<span class="badge badge-red">❌ ไม่พร้อม</span>`;
     }
+    // ลบคอลัมน์รายละเอียด — title attribute ไว้บน Inv ID แทน
     return `<tr>
       <td style="color:var(--text-muted);font-size:10px;font-weight:600">${idx+1}</td>
-      <td class="inv-id">${r.inv||'—'}</td>
-      <td style="max-width:175px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.d}">${r.d}</td>
+      <td class="inv-id" title="${r.d||''}">${r.inv||'—'}</td>
       <td><span style="font-size:10.5px;font-weight:600;color:${dateColor}">${dateLabel}</span></td>
       <td>${fmt(r.due)}</td>
       <td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td>
       <td>${shortCell}</td>
       <td>${statusCell}</td>
     </tr>`;
-  }).join('')||`<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">ไม่มีรายการที่ยังไม่พร้อม 🎉</td></tr>`;
+  }).join('')||`<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">ไม่มีรายการที่ยังไม่พร้อม 🎉</td></tr>`;
 }
 
 // ─── FILE HANDLING ───
