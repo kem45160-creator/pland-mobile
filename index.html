@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Delivery Plan Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg-grad-1: #aecff5;
+    --glass: rgba(255,255,255,0.45);
+    --glass-border: rgba(255,255,255,0.80);
+    --glass-hover: rgba(255,255,255,0.60);
+    --blue: #2563eb;
+    --green: #2d7d72;
+    --green-rgb: 45,125,114;
+    --red: #E05C63;
+    --red-rgb: 224,92,99;
+    --amber: #d97706;
+    --indigo: #63d7f1;
+    --text: rgba(10,20,50,0.92);
+    --text-muted: rgba(10,20,50,0.58);
+    --text-dim: rgba(10,20,50,0.38);
+    --border: rgba(160,200,255,0.35);
+    --shadow: 0 4px 20px rgba(60,100,200,0.14);
+    --transition: .25s cubic-bezier(.4,0,.2,1);
+    --radius: 14px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; }
+  body {
+    font-family: 'Kanit', 'DM Mono', sans-serif;
+    background: linear-gradient(145deg, #aecff5 0%, #c3dff8 30%, #d8eeff 60%, #cce5f8 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 40% at 20% 0%, rgba(255,255,255,0.55) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 60% at 85% 90%, rgba(147,210,255,0.45) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 50% at 50% 50%, rgba(200,230,255,0.25) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,0.60);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border-bottom: 1px solid rgba(255,255,255,0.85);
+    box-shadow: 0 2px 16px rgba(80,130,220,0.10);
+    padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .topbar-logo { font-size: 20px; flex-shrink: 0; }
+  .topbar-title { font-size: 13px; font-weight: 700; color: #1e3a8a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar-sub { font-size: 10px; color: var(--text-dim); }
+  .topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .today-badge {
+    background: rgba(219,234,254,0.85); color: var(--blue);
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+    border: 1px solid rgba(37,99,235,0.3); white-space: nowrap;
+  }
+  .settings-btn {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px;
+    transition: background .15s;
+  }
+  .settings-btn:hover { background: var(--glass-hover); }
+
+  /* ── SETTINGS PANEL (drawer) ── */
+  .settings-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(100,130,180,0.25);
+    backdrop-filter: blur(4px); z-index: 100;
+  }
+  .settings-overlay.open { display: block; }
+  .settings-panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(320px, 92vw);
+    background: rgba(240,248,255,0.96);
+    backdrop-filter: blur(32px) saturate(200%);
+    border-left: 1px solid rgba(255,255,255,0.9);
+    box-shadow: -8px 0 40px rgba(60,100,200,0.18);
+    z-index: 101; overflow-y: auto;
+    transform: translateX(110%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    padding: 0 0 24px 0;
+  }
+  .settings-overlay.open .settings-panel { transform: translateX(0); }
+  .settings-header {
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: rgba(240,248,255,0.97);
+    backdrop-filter: blur(16px); z-index: 2;
+  }
+  .settings-header-title { font-size: 14px; font-weight: 700; color: #1e3a8a; }
+  .settings-close {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(148,163,184,.2); border: 1px solid var(--border);
+    cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; color: var(--text-muted);
+    transition: all .15s;
+  }
+  .settings-close:hover { background: rgba(220,38,38,.15); color: var(--red); }
+  .settings-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+  .gs-label { font-size: 10px; font-weight: 600; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .mode-switcher { display: flex; gap: 4px; }
+  .mode-btn {
+    flex: 1; padding: 7px 6px; border-radius: 9px; border: 1px solid var(--border);
+    background: rgba(255,255,255,.55); color: var(--text-muted); font-size: 11px; font-weight: 600;
+    cursor: pointer; font-family: 'Kanit', sans-serif; transition: all .15s; text-align: center;
+  }
+  .mode-btn.active { background: rgba(219,234,254,.9); color: var(--blue); border-color: rgba(37,99,235,.4); }
+  .gs-input {
+    width: 100%; margin-top: 5px; padding: 7px 10px; border-radius: 8px;
+    border: 1px solid rgba(37,99,235,.22); background: rgba(255,255,255,.8);
+    font-size: 12px; color: var(--text); font-family: 'Kanit','DM Mono',monospace;
+    outline: none; transition: border-color .15s;
+  }
+  .gs-input:focus { border-color: var(--blue); background: #fff; }
+  .gs-input::placeholder { color: var(--text-dim); }
+  .gs-btn {
+    width: 100%; margin-top: 7px; padding: 8px; border-radius: 9px;
+    border: 1px solid rgba(37,99,235,.35); background: rgba(219,234,254,0.8);
+    color: #1e3a8a; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: 'Kanit', sans-serif; transition: all .15s;
+  }
+  .gs-btn:hover { background: rgba(191,219,254,0.95); }
+  .gs-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .gs-status { font-size: 10.5px; margin-top: 5px; color: var(--text-dim); min-height: 14px; }
+  .file-picker-area {
+    width: 100%; border: 1.5px dashed rgba(37,99,235,.3); border-radius: 10px;
+    padding: 12px; text-align: center; cursor: pointer;
+    transition: border-color .15s, background .15s; position: relative;
+    background: rgba(255,255,255,0.55);
+  }
+  .file-picker-area:hover { border-color: rgba(37,99,235,.7); background: rgba(219,234,254,.5); }
+  .file-picker-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; }
+  .file-picker-icon { font-size: 22px; margin-bottom: 4px; }
+  .file-picker-text { font-size: 11px; color: var(--text-muted); }
+  .ar-row { display: flex; align-items: center; justify-content: space-between; }
+  .ar-label { font-size: 11px; color: var(--text-dim); }
+  .ar-select {
+    background: rgba(255,255,255,.7); border: 1px solid var(--border);
+    border-radius: 7px; padding: 4px 8px; font-size: 11px; color: var(--text-muted);
+    outline: none; cursor: pointer; font-family: 'Kanit', sans-serif;
+  }
+  .ar-countdown { font-size: 10px; color: #2d7d72; margin-top: 3px; min-height: 14px; display: flex; align-items: center; gap: 4px; }
+  .ar-countdown .pulse { width: 6px; height: 6px; border-radius: 50%; background: #2d7d72; animation: pulse 1s ease-in-out infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+  /* ── MAIN SCROLL ── */
+  .main { position: relative; z-index: 1; padding: 12px 12px 32px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── GLASS CARD ── */
+  .card {
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.82);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.95);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 14px 10px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .card-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
+  .card-subtitle { font-size: 10.5px; color: var(--text-muted); margin-top: 1px; }
+  .card-body { padding: 12px 14px; }
+
+  /* ── STAT CARDS — 2×2 grid ── */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card {
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.82);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.95);
+    padding: 13px 13px 11px; position: relative; overflow: hidden;
+  }
+  .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2.5px; background:var(--acc,var(--blue)); }
+  .stat-label { font-size: 10px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; line-height: 1.3; }
+  .stat-value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .stat-sub { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+  .stat-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 26px; opacity: .75; }
+
+  /* ── SKELETON ── */
+  @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+  .skeleton {
+    background: linear-gradient(90deg,rgba(148,163,184,.15) 25%,rgba(148,163,184,.3) 50%,rgba(148,163,184,.15) 75%);
+    background-size: 400px 100%; animation: shimmer 1.4s infinite linear; border-radius: 5px;
+  }
+
+  /* ── DONUTS — 3 col compact ── */
+  .donuts-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .donut-mini-card {
+    background: rgba(255,255,255,0.52);
+    backdrop-filter: blur(18px);
+    border-radius: 12px; border: 1px solid rgba(255,255,255,0.82);
+    box-shadow: var(--shadow);
+    padding: 10px 8px 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  .donut-mini-label { font-size: 10px; font-weight: 600; color: #1e40af; text-align: center; line-height: 1.2; }
+  .donut-mini-wrap { position: relative; height: 72px; width: 72px; display: flex; align-items: center; justify-content: center; }
+  .donut-center { position: absolute; text-align: center; pointer-events: none; }
+  .donut-center .dc-val { font-size: 15px; font-weight: 700; color: rgba(15,23,42,0.85); line-height: 1; }
+  .donut-center .dc-label { font-size: 8.5px; color: var(--text-muted); }
+  .donut-stats { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+  .donut-stat-item { display: flex; align-items: center; justify-content: space-between; }
+  .donut-stat-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+  .donut-stat-lbl { font-size: 9px; color: var(--text-muted); flex: 1; margin: 0 4px; }
+  .donut-stat-val { font-size: 11px; font-weight: 700; }
+
+  /* ── BAR CHART ── */
+  .chart-wrapper { position: relative; height: 200px; }
+  .no-data-overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; color: var(--text-muted);
+    gap: 5px; font-size: 11px; pointer-events: none;
+  }
+  .no-data-overlay .ndo-icon { font-size: 24px; opacity: .3; }
+  .no-data-overlay .ndo-text { font-weight: 600; opacity: .5; }
+  .legend-wrap { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--text-muted); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; }
+
+  /* ── TOMORROW CARD ── */
+  .tomorrow-card {
+    background: linear-gradient(135deg, rgba(219,234,254,0.75) 0%, rgba(191,219,254,0.65) 100%);
+    backdrop-filter: blur(22px);
+    border: 1px solid rgba(255,255,255,0.9);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 28px rgba(37,99,235,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+    padding: 14px;
+    color: #1e3a8a;
+  }
+  .tom-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+  .tom-date-lbl { font-size: 10px; font-weight: 500; opacity: .6; text-transform: uppercase; letter-spacing: .8px; }
+  .tom-toggle-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.8);
+    color: rgba(30,58,138,.9); border-radius: 8px; padding: 4px 9px;
+    font-size: 10.5px; font-weight: 600; cursor: pointer;
+    font-family: 'Kanit', sans-serif; transition: all .15s; white-space: nowrap;
+  }
+  .tom-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .tom-pill {
+    background: rgba(255,255,255,.6); border-radius: 10px; padding: 11px 12px;
+    border: 1px solid rgba(255,255,255,.85); cursor: pointer;
+    transition: all .15s; backdrop-filter: blur(6px);
+  }
+  .tom-pill:hover { background: rgba(255,255,255,.82); transform: translateY(-1px); }
+  .tom-pill.green { border-color: rgba(5,150,105,.3); }
+  .tom-pill.red { border-color: rgba(220,38,38,.3); }
+  .pill-val { font-size: 26px; font-weight: 700; line-height: 1; }
+  .pill-val.green { color: #2d7d72; }
+  .pill-val.red { color: var(--red); }
+  .pill-lbl { font-size: 11px; opacity: .65; margin-top: 2px; }
+  .tom-total-row { margin-bottom: 8px; }
+  .tom-total-num { font-size: 32px; font-weight: 700; line-height: 1; }
+  .tom-total-sub { font-size: 11px; opacity: .55; margin-top: 1px; }
+
+  /* tomorrow lists — 2 cols */
+  .tom-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tom-list-col { display: flex; flex-direction: column; gap: 3px; max-height: 140px; overflow-y: auto; }
+  .tom-item-row {
+    display: flex; align-items: center; gap: 5px; padding: 4px 7px;
+    border-radius: 7px; background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.8);
+    min-width: 0;
+  }
+  .tom-item-name { font-size: 10.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; }
+  .tom-cust-name {
+    font-size: 9.5px; font-weight: 600; color: #1e40af;
+    background: rgba(219,234,254,.7); border: 1px solid rgba(147,197,253,.5);
+    border-radius: 4px; padding: 1px 5px; flex-shrink: 0;
+    max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tom-hint { font-size: 10px; opacity: .35; text-align: center; margin-top: 8px; }
+
+  /* ── NOT READY TABLE ── */
+  .filter-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .filter-btn {
+    padding: 4px 11px; border-radius: 8px; font-size: 11px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border); background: rgba(255,255,255,.6);
+    color: var(--text-muted); transition: all .15s; font-family: 'Kanit', sans-serif;
+  }
+  .filter-btn.active { background: rgba(219,234,254,.85); color: var(--blue); border-color: rgba(37,99,235,.4); }
+  .filter-btn:hover:not(.active) { background: rgba(255,255,255,.85); }
+
+  .table-scroll { overflow-x: auto; overflow-y: auto; max-height: 340px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 520px; }
+  .data-table th {
+    padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 600;
+    color: var(--text-dim); text-transform: uppercase; letter-spacing: .4px;
+    border-bottom: 1px solid var(--border); background: rgba(248,250,252,.7);
+    white-space: nowrap; position: sticky; top: 0; z-index: 1;
+  }
+  .data-table td { padding: 8px 10px; border-bottom: 1px solid rgba(148,163,184,.12); color: var(--text); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: rgba(219,234,254,.25); }
+
+  /* ── BADGES ── */
+  .badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
+  .badge-red   { background: rgba(220,38,38,.1); color: var(--red); border: 1px solid rgba(220,38,38,.2); }
+  .badge-green { background: rgba(5,150,105,.1); color: var(--green); border: 1px solid rgba(5,150,105,.2); }
+  .badge-amber { background: rgba(217,119,6,.1); color: var(--amber); border: 1px solid rgba(217,119,6,.2); }
+  .badge-blue  { background: rgba(37,99,235,.1); color: var(--blue); border: 1px solid rgba(37,99,235,.2); }
+  .badge-sent  { background: rgba(74,160,222,.15); color: #165aa3; border: 1px solid rgba(74,170,222,.4); }
+
+  .shortage-bar { height: 3px; background: rgba(248,113,113,.2); border-radius: 3px; overflow: hidden; margin-top: 2px; }
+  .shortage-fill { height: 100%; background: var(--red); border-radius: 3px; }
+
+  .inv-id { font-family: 'DM Mono', monospace; font-size: 10.5px; color: var(--blue); font-weight: 600; }
+
+  /* ── MODAL ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(100,130,180,.3); backdrop-filter: blur(6px); z-index: 200; align-items: flex-end; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: rgba(245,251,255,0.96);
+    backdrop-filter: blur(32px);
+    border: 1px solid rgba(255,255,255,0.95);
+    border-radius: 18px 18px 0 0;
+    width: 100%; max-width: 600px;
+    max-height: 88vh; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: 0 -12px 60px rgba(99,120,180,.22);
+    animation: slideUp .28s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes slideUp { from{transform:translateY(50%);opacity:0} to{transform:translateY(0);opacity:1} }
+  .modal-handle { width: 36px; height: 4px; border-radius: 2px; background: rgba(148,163,184,.4); margin: 8px auto 0; flex-shrink: 0; }
+  .modal-header { padding: 10px 16px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .modal-title { font-size: 13px; font-weight: 700; }
+  .modal-close {
+    background: rgba(148,163,184,.2); border: 1px solid var(--border);
+    cursor: pointer; width: 26px; height: 26px; border-radius: 50%; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; color: var(--text-muted);
+    transition: all .15s; flex-shrink: 0;
+  }
+  .modal-close:hover { background: rgba(220,38,38,.15); color: var(--red); }
+  .modal-body { padding: 12px 14px; overflow-y: auto; flex: 1; }
+  .modal-tabs { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+  .modal-tab {
+    padding: 5px 11px; border-radius: 8px; font-size: 11px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border); background: rgba(255,255,255,.6);
+    color: var(--text-muted); transition: all .15s; font-family: 'Kanit', sans-serif;
+  }
+  .modal-tab.active { background: rgba(219,234,254,.85); color: var(--blue); border-color: rgba(37,99,235,.4); }
+
+  /* ── LAST UPDATED + SECTION DIVIDERS ── */
+  .section-divider { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+  .divider-label { font-size: 10px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: .8px; white-space: nowrap; }
+  .divider-line { flex: 1; height: 1px; background: linear-gradient(to right, rgba(147,197,253,.4), transparent); }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: rgba(148,163,184,.08); }
+  ::-webkit-scrollbar-thumb { background: rgba(148,163,184,.35); border-radius: 3px; }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .stat-card, .card, .tomorrow-card, .donut-mini-card { animation: fadeIn .3s ease both; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">📦</div>
+    <div>
+      <div class="topbar-title">SAHA Delivery</div>
+      <div class="topbar-sub" id="logoMonthSub">—</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div>
+      <div style="font-size:9.5px;color:var(--text-muted);text-align:right">อัปเดต</div>
+      <div id="lastUpdatedBadge" style="font-size:10.5px;font-weight:600;color:var(--text)">—</div>
+    </div>
+    <span class="today-badge" id="todayBadge">📅 —</span>
+    <div class="settings-btn" onclick="openSettings()" title="ตั้งค่า">⚙️</div>
+  </div>
+</header>
+
+<!-- SETTINGS PANEL -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettingsIfBg(event)">
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-header">
+      <div class="settings-header-title">⚙️ ตั้งค่า</div>
+      <div class="settings-close" onclick="closeSettings()">✕</div>
+    </div>
+    <div class="settings-body">
+
+      <div>
+        <div class="gs-label">โหมดการใช้งาน</div>
+        <div class="mode-switcher" id="modeSwitcher">
+          <button class="mode-btn active" id="modeXBtn" onclick="setMode('X')">🖥 เครื่อง X<br><span style="font-size:9px;opacity:.6">มีไฟล์</span></button>
+          <button class="mode-btn" id="modeYBtn" onclick="setMode('Y')">📺 เครื่อง Y<br><span style="font-size:9px;opacity:.6">แสดงผล</span></button>
+        </div>
+      </div>
+
+      <div>
+        <div class="gs-label">🔗 GitHub Gist Config</div>
+        <input class="gs-input" id="gistId" placeholder="Gist ID">
+        <input class="gs-input" id="gistToken" placeholder="GitHub Token (ghp_...)" type="password">
+        <button class="gs-btn" onclick="saveGistConfig()">💾 บันทึก Config</button>
+        <div class="gs-status" id="cfgStatus"></div>
+      </div>
+
+      <!-- เครื่อง X panel -->
+      <div id="panelX">
+        <div class="gs-label">📂 แหล่งข้อมูล (Excel)</div>
+        <div class="file-picker-area" id="filePickerArea" title="คลิกเลือกไฟล์">
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm" onchange="onFileSelected(this)">
+          <div class="file-picker-icon">📁</div>
+          <div class="file-picker-text">คลิกหรือลากไฟล์มาวาง<br>.xlsx / .xls / .xlsm</div>
+        </div>
+        <div id="srcFile" style="font-size:10.5px;color:var(--text-muted);margin-top:5px;word-break:break-all">—</div>
+        <button class="gs-btn" id="gsBtn" onclick="fetchData()">🔄 โหลดข้อมูลใหม่</button>
+        <div class="gs-status" id="gsStatus">📂 กรุณาเลือกไฟล์ Excel</div>
+        <div class="ar-row" style="margin-top:10px">
+          <span class="ar-label">⏱ Auto-refresh</span>
+          <select class="ar-select" id="arSelect" onchange="setAutoRefresh(this.value)">
+            <option value="0">ปิด</option>
+            <option value="30">30 วินาที</option>
+            <option value="60">1 นาที</option>
+            <option value="300">5 นาที</option>
+            <option value="900">15 นาที</option>
+          </select>
+        </div>
+        <div class="ar-countdown" id="arCountdown"></div>
+      </div>
+
+      <!-- เครื่อง Y panel -->
+      <div id="panelY" style="display:none">
+        <div class="gs-label">📺 โหมดแสดงผล</div>
+        <div class="gs-status" id="yStatus" style="min-height:14px">⏳ รอรับข้อมูล...</div>
+        <div class="ar-row" style="margin-top:8px">
+          <span class="ar-label">⏱ Sync ทุก</span>
+          <select class="ar-select" id="ySyncSelect" onchange="setYSync(this.value)">
+            <option value="15">15 วินาที</option>
+            <option value="30" selected>30 วินาที</option>
+            <option value="60">1 นาที</option>
+            <option value="300">5 นาที</option>
+          </select>
+        </div>
+        <div class="ar-countdown" id="ySyncCountdown" style="margin-top:4px"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- STATS 2x2 -->
+  <div class="stats-grid">
+    <div class="stat-card" style="--acc:#60a5fa">
+      <div class="stat-label">ยอดส่งวันนี้ทั้งหมด</div>
+      <div class="stat-value" id="stat-total"><span class="skeleton" style="display:inline-block;height:26px;width:44px;vertical-align:middle">&nbsp;</span></div>
+      <div class="stat-sub">รายการ</div>
+      <div class="stat-icon">📦</div>
+    </div>
+    <div class="stat-card" style="--acc:#34d399">
+      <div class="stat-label">พร้อมส่ง วันนี้</div>
+      <div class="stat-value" id="stat-ready" style="color:var(--green)"><span class="skeleton" style="display:inline-block;height:26px;width:44px;vertical-align:middle">&nbsp;</span></div>
+      <div class="stat-sub">รายการ</div>
+      <div class="stat-icon">✅</div>
+    </div>
+    <div class="stat-card" style="--acc:#f87171">
+      <div class="stat-label">ยังไม่พร้อม วันนี้</div>
+      <div class="stat-value" id="stat-notready" style="color:var(--red)"><span class="skeleton" style="display:inline-block;height:26px;width:44px;vertical-align:middle">&nbsp;</span></div>
+      <div class="stat-sub">รายการ</div>
+      <div class="stat-icon">⚠️</div>
+    </div>
+    <div class="stat-card" style="--acc:#fbbf24">
+      <div class="stat-label">ความพร้อม % วันนี้</div>
+      <div class="stat-value" id="stat-pct" style="color:var(--amber)"><span class="skeleton" style="display:inline-block;height:26px;width:44px;vertical-align:middle">&nbsp;</span></div>
+      <div class="stat-sub">พร้อมส่ง</div>
+      <div class="stat-icon">📊</div>
+    </div>
+  </div>
+
+  <!-- DONUTS 3 col -->
+  <div class="donuts-row">
+    <!-- Yesterday -->
+    <div class="donut-mini-card">
+      <div class="donut-mini-label" id="ydTitle">เมื่อวาน</div>
+      <div class="donut-mini-wrap">
+        <canvas id="donut0"></canvas>
+        <div class="donut-center" id="dc0"><div class="dc-val">—</div><div class="dc-label">รายการ</div></div>
+      </div>
+      <div class="donut-stats">
+        <div class="donut-stat-item">
+          <div class="donut-stat-dot" style="background:#4E86DE"></div>
+          <span class="donut-stat-lbl">ส่งแล้ว</span>
+          <span class="donut-stat-val" id="yd-sent" style="color:#4E86DE">—</span>
+        </div>
+        <div class="donut-stat-item">
+          <div class="donut-stat-dot" style="background:var(--red)"></div>
+          <span class="donut-stat-lbl">ค้างส่ง</span>
+          <span class="donut-stat-val" id="yd-ov" style="color:var(--red)">—</span>
+        </div>
+      </div>
+    </div>
+    <!-- Today -->
+    <div class="donut-mini-card">
+      <div class="donut-mini-label" id="tdTitle">วันนี้ ✨</div>
+      <div class="donut-mini-wrap">
+        <canvas id="donut1"></canvas>
+        <div class="donut-center" id="dc1"><div class="dc-val">—</div><div class="dc-label">รายการ</div></div>
+      </div>
+      <div class="donut-stats">
+        <div class="donut-stat-item">
+          <div class="donut-stat-dot" style="background:#4E86DE"></div>
+          <span class="donut-stat-lbl">ส่งแล้ว</span>
+          <span class="donut-stat-val" id="td-sent" style="color:#4E86DE">—</span>
+        </div>
+        <div class="donut-stat-item">
+          <div class="donut-stat-dot" style="background:#22A652"></div>
+          <span class="donut-stat-lbl">พร้อม</span>
+          <span class="donut-stat-val" id="td-r" style="color:#22A652">—</span>
+        </div>
+        <div class="donut-stat-item">
+          <div class="donut-stat-dot" style="background:var(--red)"></div>
+          <span class="donut-stat-lbl">ไม่พร้อม</span>
+          <span class="donut-stat-val" id="td-n" style="color:var(--red)">—</span>
+        </div>
+      </div>
+    </div>
+    <!-- Tomorrow -->
+    <div class="donut-mini-card">
+      <div class="donut-mini-label" id="tmTitle">พรุ่งนี้</div>
+      <div class="donut-mini-wrap">
+        <canvas id="donut2"></canvas>
+        <div class="donut-center" id="dc2"><div class="dc-val">—</div><div class="dc-label">รายการ</div></div>
+      </div>
+      <div class="donut-stats">
+        <div class="donut-stat-item">
+          <div class="donut-stat-dot" style="background:#4E86DE"></div>
+          <span class="donut-stat-lbl">ส่งแล้ว</span>
+          <span class="donut-stat-val" id="tm-sent" style="color:#4E86DE">—</span>
+        </div>
+        <div class="donut-stat-item">
+          <div class="donut-stat-dot" style="background:#22A652"></div>
+          <span class="donut-stat-lbl">พร้อม</span>
+          <span class="donut-stat-val" id="tm-r" style="color:#22A652">—</span>
+        </div>
+        <div class="donut-stat-item">
+          <div class="donut-stat-dot" style="background:var(--red)"></div>
+          <span class="donut-stat-lbl">ไม่พร้อม</span>
+          <span class="donut-stat-val" id="tm-n" style="color:var(--red)">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BAR CHART -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title" id="barChartTitle">แผนการจัดส่งรายวัน</div>
+        <div class="card-subtitle">แตะแท่งกราฟเพื่อดูรายละเอียด</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="chart-wrapper">
+        <canvas id="barChart"></canvas>
+        <div class="no-data-overlay" id="barChartOverlay">
+          <div class="ndo-icon">📊</div>
+          <div class="ndo-text">รอโหลดข้อมูล...</div>
+        </div>
+      </div>
+      <div class="legend-wrap" style="margin-top:10px">
+        <div class="legend-item"><div class="legend-dot" style="background:#22A652"></div>พร้อมส่ง</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#E05C63"></div>ไม่พร้อมส่ง</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(208,129,141,0.75);border:1px solid #D0818D"></div>ค้างส่ง</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(231,181,49,0.55);border:1px solid #E7B531"></div>ส่งล่าช้า</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(78,134,222,0.6);border:1px solid #4E86DE"></div>ส่งแล้ว</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOMORROW CARD -->
+  <div class="tomorrow-card" id="tomorrowCard">
+    <div class="tom-header-row">
+      <div>
+        <div class="tom-date-lbl" id="tomDateLabel">📅 พรุ่งนี้</div>
+        <div class="tom-total-num" id="tom-total">—</div>
+        <div class="tom-total-sub">รายการที่ต้องจัดส่ง</div>
+      </div>
+      <button class="tom-toggle-btn" id="tomToggleBtn" onclick="toggleTomView(event)">
+        <span id="tomToggleIcon">🔖</span>
+        <span id="tomToggleLabel">Inv ID</span>
+      </button>
+    </div>
+    <div class="tom-pills">
+      <div class="tom-pill green" id="tomReadyPill">
+        <div class="pill-val green" id="tom-ready">—</div>
+        <div class="pill-lbl">✅ พร้อมส่ง</div>
+      </div>
+      <div class="tom-pill red" id="tomNotReadyPill">
+        <div class="pill-val red" id="tom-notready">—</div>
+        <div class="pill-lbl">❌ ไม่พร้อมส่ง</div>
+      </div>
+    </div>
+    <div class="tom-lists">
+      <div id="tomReadyList" class="tom-list-col"></div>
+      <div id="tomNotReadyList" class="tom-list-col"></div>
+    </div>
+    <div class="tom-hint">แตะที่การ์ดเพื่อดูรายละเอียด</div>
+  </div>
+
+  <!-- NOT READY TABLE -->
+  <div class="card">
+    <div class="card-header" style="flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="card-title">รายการที่ยังไม่พร้อมส่ง</div>
+        <div class="card-subtitle">เรียงตามยอดขาดน้อย→มาก</div>
+      </div>
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="filterTable('all')" id="btn-all">ทั้งหมด</button>
+        <button class="filter-btn" onclick="filterTable('yd')" id="btn-yd">เมื่อวาน</button>
+        <button class="filter-btn" onclick="filterTable('td')" id="btn-td">วันนี้</button>
+        <button class="filter-btn" onclick="filterTable('tm')" id="btn-tm">พรุ่งนี้</button>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:30px">#</th>
+            <th>ลูกค้า</th>
+            <th style="width:110px">Inventory ID</th>
+            <th>รายละเอียด</th>
+            <th style="width:68px">วันที่</th>
+            <th style="width:54px">Due</th>
+            <th style="width:54px">Stock</th>
+            <th style="width:90px">ขาด ▲</th>
+            <th style="width:72px">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="notReadyBody">
+          <tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-muted)">รอโหลดข้อมูล...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL (bottom sheet) -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalTitle">รายละเอียด</div>
+        <div id="modalSubtitle" style="font-size:10.5px;color:var(--text-muted);margin-top:1px"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tabs" id="modalTabs"></div>
+      <div class="table-scroll" style="max-height:calc(88vh - 180px)">
+        <table class="data-table">
+          <thead id="modalThead"></thead>
+          <tbody id="modalBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───
+let DATA = {};
+let _lastHash = '';
+let _dataLoaded = false;
+let _tomViewMode = 'name';
+let _lastFileName = null;
+let _savedBytes = null;
+
+const TODAY = new Date().toISOString().slice(0,10);
+
+// ─── DATE HELPERS ───
+function nextWorkday(d) { const dt=new Date(d); dt.setDate(dt.getDate()+1); while(dt.getDay()===0) dt.setDate(dt.getDate()+1); return dt.toISOString().slice(0,10); }
+function prevWorkday(d) { const dt=new Date(d); dt.setDate(dt.getDate()-1); while(dt.getDay()===0) dt.setDate(dt.getDate()-1); return dt.toISOString().slice(0,10); }
+
+const THAI_MONTHS_SHORT = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const THAI_MONTHS_FULL  = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+function thaiDate(d) { if(!d) return '—'; const [y,m,dd]=d.split('-'); return `${parseInt(dd)} ${THAI_MONTHS_SHORT[parseInt(m)]}`; }
+function fmt(n) { return n!==undefined&&n!==null ? Number(n).toLocaleString() : '—'; }
+
+const YESTERDAY = prevWorkday(TODAY);
+const TOMORROW  = nextWorkday(TODAY);
+
+function hashData(obj) { return JSON.stringify(obj).split('').reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0,0).toString(); }
+function deriveMonthLabel(data) {
+  const dates=Object.keys(data).sort(); if(!dates.length) return '—';
+  const mc={}; dates.forEach(d=>{ const [y,m]=d.split('-'); const k=`${y}-${m}`; mc[k]=(mc[k]||0)+1; });
+  const dom=Object.entries(mc).sort((a,b)=>b[1]-a[1])[0][0];
+  const [year,month]=dom.split('-');
+  return `${THAI_MONTHS_SHORT[parseInt(month)]} ${parseInt(year)+543}`;
+}
+
+// ─── SETTINGS PANEL ───
+function openSettings() { document.getElementById('settingsOverlay').classList.add('open'); }
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
+function closeSettingsIfBg(e) { if(e.target===document.getElementById('settingsOverlay')) closeSettings(); }
+
+// ─── TOMORROW TOGGLE ───
+function toggleTomView(e) {
+  e.stopPropagation();
+  _tomViewMode = _tomViewMode==='name' ? 'inv' : 'name';
+  document.getElementById('tomToggleIcon').textContent  = _tomViewMode==='name' ? '🔖' : '🆔';
+  document.getElementById('tomToggleLabel').textContent = _tomViewMode==='name' ? 'Inv ID' : 'ชื่อรายการ';
+  renderTomLists();
+}
+function renderTomLists() {
+  const tmData = DATA[TOMORROW] || {ready:[],not_ready:[]};
+  const showInv = _tomViewMode==='inv';
+  const renderItem = (r, color) => {
+    const label = showInv ? (r.inv||'—') : (r.d||r.c||'—');
+    return `<div class="tom-item-row" title="${r.d||''}">
+      <span class="tom-item-name" style="color:${color}">${label}</span>
+      ${r.c?`<span class="tom-cust-name">${r.c}</span>`:''}
+    </div>`;
+  };
+  document.getElementById('tomReadyList').innerHTML =
+    (tmData.ready||[]).length ? (tmData.ready||[]).map(r=>renderItem(r,'#2d7d72')).join('') : `<div style="font-size:10px;color:rgba(30,58,138,.7);padding:4px 0">ไม่มีรายการ</div>`;
+  document.getElementById('tomNotReadyList').innerHTML =
+    (tmData.not_ready||[]).length ? (tmData.not_ready||[]).map(r=>renderItem(r,'#f87171')).join('') : `<div style="font-size:10px;color:rgba(30,58,138,.7);padding:4px 0">ไม่มีรายการ</div>`;
+}
+
+// ─── CHARTS ───
+let barChartInst = null;
+let donutInsts   = [null,null,null];
+
+window.addEventListener('DOMContentLoaded', () => {
+  const [y,m,dd]=TODAY.split('-');
+  document.getElementById('todayBadge').textContent = `📅 ${parseInt(dd)} ${THAI_MONTHS_SHORT[parseInt(m)]} ${parseInt(y)+543}`;
+  updateDateLabels();
+  if(_gistId) document.getElementById('gistId').value = _gistId;
+  if(_gistToken) document.getElementById('gistToken').value = _gistToken;
+  applyMode(_appMode);
+});
+
+function updateDateLabels() {
+  document.getElementById('ydTitle').textContent = `เมื่อวาน\n${thaiDate(YESTERDAY)}`;
+  document.getElementById('tdTitle').textContent = `วันนี้ ✨\n${thaiDate(TODAY)}`;
+  document.getElementById('tmTitle').textContent = `พรุ่งนี้\n${thaiDate(TOMORROW)}`;
+  document.getElementById('tomDateLabel').textContent = `📅 พรุ่งนี้ (${thaiDate(TOMORROW)})`;
+}
+
+function renderAll() {
+  _dataLoaded = true;
+  document.getElementById('logoMonthSub').textContent = deriveMonthLabel(DATA);
+  updateDateLabels();
+
+  const dates=Object.keys(DATA).sort();
+  if(dates.length) {
+    const [y,m]=dates[0].split('-');
+    document.getElementById('barChartTitle').textContent = `แผนรายวัน – ${THAI_MONTHS_FULL[parseInt(m)]} ${parseInt(y)+543}`;
+  }
+
+  const td = DATA[TODAY]||{r:0,n:0,sent:0};
+  const tdTotal = (td.r||0)+(td.n||0)+(td.sent||0);
+  document.getElementById('stat-total').textContent    = tdTotal;
+  document.getElementById('stat-ready').textContent    = td.r||0;
+  document.getElementById('stat-notready').textContent = td.n||0;
+  const pct = (td.r||0)+(td.n||0)>0 ? Math.round((td.r||0)/((td.r||0)+(td.n||0))*100) : 100;
+  document.getElementById('stat-pct').textContent = pct+'%';
+
+  const tm = DATA[TOMORROW]||{r:0,n:0};
+  document.getElementById('tom-total').textContent    = (tm.r||0)+(tm.n||0);
+  document.getElementById('tom-ready').textContent    = tm.r||0;
+  document.getElementById('tom-notready').textContent = tm.n||0;
+
+  renderTomLists();
+
+  document.getElementById('tomorrowCard').onclick = e => {
+    if(!e.target.closest('.tom-pill')&&!e.target.closest('.tom-toggle-btn')) openDayModal(TOMORROW,'all');
+  };
+  document.getElementById('tomReadyPill').onclick    = e => { e.stopPropagation(); openDayModal(TOMORROW,'ready'); };
+  document.getElementById('tomNotReadyPill').onclick = e => { e.stopPropagation(); openDayModal(TOMORROW,'not_ready'); };
+
+  donutInsts.forEach(c=>c&&c.destroy());
+  donutInsts[0] = initDonutYesterday('donut0',YESTERDAY,'dc0');
+  donutInsts[1] = initDonutTodayTomorrow('donut1',TODAY,'dc1','td-sent','td-r','td-n');
+  donutInsts[2] = initDonutTodayTomorrow('donut2',TOMORROW,'dc2','tm-sent','tm-r','tm-n');
+
+  if(barChartInst) barChartInst.destroy();
+  barChartInst = initBarChart();
+
+  renderTable('all');
+}
+
+function initDonutYesterday(canvasId, dateKey, centerId) {
+  const d=DATA[dateKey]||{sent:0,ov:0};
+  const sent=d.sent||0, ov=d.ov||0, total=sent+ov;
+  document.getElementById('yd-sent').textContent=sent;
+  document.getElementById('yd-ov').textContent=ov;
+  const dc=document.getElementById(centerId);
+  dc.querySelector('.dc-val').textContent=total;
+  const ctx=document.getElementById(canvasId).getContext('2d');
+  return new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:['ส่งแล้ว','ค้างส่ง'],datasets:[{
+      data:total===0?[1,0]:[sent,ov],
+      backgroundColor:total===0?['rgba(255,255,255,.08)','rgba(255,255,255,.04)']:['#4E86DE','#D0818D'],
+      borderWidth:0,hoverOffset:3
+    }]},
+    options:{cutout:'72%',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}`}}},
+      onClick:(evt,el)=>{if(el.length)openDayModal(dateKey,el[0].index===0?'sent':'overdue');}
+    }
+  });
+}
+
+function initDonutTodayTomorrow(canvasId, dateKey, centerId, sentId, readyId, notReadyId) {
+  const d=DATA[dateKey]||{r:0,n:0,sent:0};
+  const sent=d.sent||0,r=d.r||0,n=d.n||0,total=sent+r+n;
+  document.getElementById(sentId).textContent=sent;
+  document.getElementById(readyId).textContent=r;
+  document.getElementById(notReadyId).textContent=n;
+  const dc=document.getElementById(centerId);
+  dc.querySelector('.dc-val').textContent=total;
+  const ctx=document.getElementById(canvasId).getContext('2d');
+  return new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:['ส่งแล้ว','พร้อมส่ง','ไม่พร้อมส่ง'],datasets:[{
+      data:total===0?[0,1,0]:[sent,r,n],
+      backgroundColor:total===0?['rgba(255,255,255,.04)','rgba(255,255,255,.08)','rgba(255,255,255,.04)']:['#4E86DE','#22A652','#E05C63'],
+      borderWidth:0,hoverOffset:3
+    }]},
+    options:{cutout:'72%',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}`}}},
+      onClick:(evt,el)=>{if(!el.length)return;openDayModal(dateKey,['sent','ready','not_ready'][el[0].index]);}
+    }
+  });
+}
+
+function initBarChart() {
+  const allDates=Object.keys(DATA).sort().filter(d=>new Date(d).getDay()!==0);
+  const dayNames=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  const labels=allDates.map(d=>{const js=new Date(d);return `${dayNames[js.getDay()]} ${parseInt(d.split('-')[2])}`;});
+  const todayIdx=allDates.indexOf(TODAY);
+  const overlay=document.getElementById('barChartOverlay');
+  if(overlay) overlay.style.display='none';
+
+  const pctPlugin={
+    id:'pctLabel',
+    afterDatasetsDraw(chart){
+      const{ctx,scales:{x,y}}=chart;
+      ctx.save();
+      allDates.forEach((d,i)=>{
+        const day=DATA[d]||{r:0,n:0};
+        const rn=(day.r||0)+(day.n||0);
+        if(!rn) return;
+        const pct=Math.round((day.r||0)/rn*100);
+        const total=rn+(day.ov||0)+(day.l||0)+(day.sent||0);
+        ctx.font='bold 9px Kanit,sans-serif';
+        ctx.fillStyle=pct>=80?'#2d7d72':pct>=50?'#f59e0b':'#b85c5c';
+        ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillText(pct+'%',x.getPixelForValue(i),y.getPixelForValue(total)-4);
+      });
+      ctx.restore();
+    }
+  };
+
+  const ctx=document.getElementById('barChart').getContext('2d');
+  return new Chart(ctx,{
+    type:'bar',plugins:[pctPlugin],
+    data:{labels,datasets:[
+      {label:'พร้อมส่ง',    data:allDates.map(d=>DATA[d]?.r||0),    backgroundColor:allDates.map((d,i)=>i===todayIdx?'#178a40':'#22A652'),borderRadius:3,borderSkipped:false},
+      {label:'ไม่พร้อมส่ง', data:allDates.map(d=>DATA[d]?.n||0),    backgroundColor:allDates.map((d,i)=>i===todayIdx?'#b83a40':'#E05C63'),borderRadius:3,borderSkipped:false},
+      {label:'ค้างส่ง',     data:allDates.map(d=>DATA[d]?.ov||0),   backgroundColor:'rgba(208,129,141,.65)',borderColor:'#D0818D',borderWidth:1.5,borderRadius:3,borderSkipped:false},
+      {label:'ส่งล่าช้า',   data:allDates.map(d=>DATA[d]?.l||0),    backgroundColor:'rgba(231,181,49,.45)',borderColor:'#E7B531',borderWidth:1.5,borderRadius:3,borderSkipped:false},
+      {label:'ส่งแล้ว',     data:allDates.map(d=>DATA[d]?.sent||0), backgroundColor:'rgba(78,134,222,.55)',borderColor:'#4E86DE',borderWidth:1.5,borderRadius:3,borderSkipped:false}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      layout:{padding:{top:20}},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title:items=>thaiDate(allDates[items[0].dataIndex]),
+          label:c=>` ${c.dataset.label}: ${c.raw} รายการ`,
+          afterBody:items=>{
+            const d=allDates[items[0].dataIndex];
+            const day=DATA[d]||{};
+            const total=(day.r||0)+(day.n||0);
+            const pct=total?Math.round((day.r||0)/total*100):0;
+            const lines=[`รวมแผน: ${total} รายการ`,`พร้อม: ${pct}%`];
+            if((day.sent||0)>0) lines.push(`✅ ส่งแล้ว: ${day.sent}`);
+            if((day.ov||0)>0) lines.push(`🔴 ค้างส่ง: ${day.ov}`);
+            return lines;
+          }
+        }}
+      },
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{font:{size:9.5,family:'Kanit'},color:'rgba(30,58,138,.8)'}},
+        y:{stacked:true,grid:{color:'rgba(255,255,255,.06)'},ticks:{font:{size:9.5,family:'Kanit'},color:'rgba(30,58,138,.8)'},beginAtZero:true}
+      },
+      onClick:(evt,els)=>{if(els.length)openDayModal(allDates[els[0].index],'all');},
+      onHover:(evt,els)=>{evt.native.target.style.cursor=els.length?'pointer':'default';}
+    }
+  });
+}
+
+// ─── MODAL ───
+function openDayModal(dateKey, tab) {
+  if(!_dataLoaded) return;
+  const d=DATA[dateKey]||{ready:[],not_ready:[],late_list:[],overdue:[],sent_list:[]};
+  const allTotal=(d.r||0)+(d.n||0)+(d.ov||0)+(d.l||0)+(d.sent||0);
+  document.getElementById('modalTitle').textContent = `รายละเอียด ${thaiDate(dateKey)}`;
+  document.getElementById('modalSubtitle').textContent =
+    `รวม ${allTotal} | พร้อม ${d.r||0} | ไม่พร้อม ${d.n||0}`+
+    ((d.ov||0)>0?` | ค้างส่ง ${d.ov||0}`:'')+
+    ((d.sent||0)>0?` | ส่งแล้ว ${d.sent||0}`:'');
+  const tabs=[
+    `<button class="modal-tab ${tab==='all'?'active':''}" onclick="switchTab('all')">ทั้งหมด (${allTotal})</button>`,
+    `<button class="modal-tab ${tab==='ready'?'active':''}" onclick="switchTab('ready')">✅ พร้อม (${d.r||0})</button>`,
+    `<button class="modal-tab ${tab==='not_ready'?'active':''}" onclick="switchTab('not_ready')">❌ ไม่พร้อม (${d.n||0})</button>`,
+  ];
+  if((d.ov||0)>0)   tabs.push(`<button class="modal-tab ${tab==='overdue'?'active':''}" onclick="switchTab('overdue')">🔴 ค้างส่ง (${d.ov})</button>`);
+  if((d.l||0)>0)    tabs.push(`<button class="modal-tab ${tab==='late'?'active':''}" onclick="switchTab('late')">⏰ ล่าช้า (${d.l})</button>`);
+  if((d.sent||0)>0) tabs.push(`<button class="modal-tab ${tab==='sent'?'active':''}" onclick="switchTab('sent')">📦 ส่งแล้ว (${d.sent})</button>`);
+  document.getElementById('modalTabs').innerHTML=tabs.join('');
+  window._mDate=dateKey;
+  renderModalTable(tab);
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(e) { document.getElementById('modalOverlay').classList.remove('open'); }
+function switchTab(tab) {
+  document.querySelectorAll('#modalTabs .modal-tab').forEach(b=>{
+    b.classList.toggle('active',
+      (tab==='all'&&b.textContent.includes('ทั้งหมด'))||
+      (tab==='ready'&&b.textContent.includes('✅'))||
+      (tab==='not_ready'&&b.textContent.includes('❌'))||
+      (tab==='overdue'&&b.textContent.includes('🔴'))||
+      (tab==='late'&&b.textContent.includes('⏰'))||
+      (tab==='sent'&&b.textContent.includes('📦'))
+    );
+  });
+  renderModalTable(tab);
+}
+
+function statusBadge(type) {
+  const m={'ready':'<span class="badge badge-green">✅ พร้อมส่ง</span>','not_ready':'<span class="badge badge-red">❌ ไม่พร้อม</span>','overdue':'<span class="badge badge-red">🔴 ค้างส่ง</span>','late':'<span class="badge badge-amber">⏰ ล่าช้า</span>','sent':'<span class="badge badge-sent">📦 ส่งแล้ว</span>'};
+  return m[type]||'';
+}
+
+function renderModalTable(tab) {
+  const d=DATA[window._mDate]||{ready:[],not_ready:[],late_list:[],overdue:[],sent_list:[]};
+  const thead=document.getElementById('modalThead');
+  const tbody=document.getElementById('modalBody');
+
+  if(tab==='all'){
+    const rows=[...(d.ready||[]).map(r=>({...r,_type:'ready'})),...(d.not_ready||[]).map(r=>({...r,_type:'not_ready'})),...(d.overdue||[]).map(r=>({...r,_type:'overdue'})),...(d.late_list||[]).map(r=>({...r,_type:'late'})),...(d.sent_list||[]).map(r=>({...r,_type:'sent'}))];
+    thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Stock</th><th>ขาด/ส่ง</th><th>สถานะ</th></tr>`;
+    tbody.innerHTML=rows.map((r,i)=>{
+      let extra='';
+      if(r._type==='ready') extra=`<span class="badge badge-green" style="font-size:9.5px">Stock พอ</span>`;
+      else if(r._type==='not_ready'){const sh=r.sh||0;extra=sh>0?`<div style="font-weight:700;color:var(--red);font-size:12px">${fmt(sh)}</div><div class="shortage-bar"><div class="shortage-fill" style="width:100%"></div></div>`:`<span class="badge badge-green" style="font-size:9.5px">Stock พอ</span>`;}
+      else if(r._type==='overdue') extra=`<div style="font-weight:700;color:var(--red);font-size:11px">BPO: ${fmt(r.balPO)}</div>`;
+      else if(r._type==='late')    extra=`<div style="font-weight:700;color:var(--green);font-size:11px">+${fmt(r.shipped)}</div>`;
+      else if(r._type==='sent')    extra=`<div style="font-weight:700;color:#4E86DE;font-size:11px">${fmt(r.shipped)}</div>`;
+      return `<tr><td style="color:var(--text-muted);font-size:10px">${i+1}</td><td style="font-size:11px;font-weight:600">${r.c||'—'}</td><td class="inv-id">${r.inv||'—'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.d||''}">${r.d||'—'}</td><td style="font-weight:600">${fmt(r.due)}</td><td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td><td>${extra}</td><td>${statusBadge(r._type)}</td></tr>`;
+    }).join('')||`<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
+    return;
+  }
+  if(tab==='sent'){
+    const rows=d.sent_list||[];
+    thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Shipment</th><th>สถานะ</th></tr>`;
+    tbody.innerHTML=rows.map((r,i)=>`<tr><td style="color:var(--text-muted);font-size:10px">${i+1}</td><td style="font-size:11px;font-weight:600">${r.c}</td><td class="inv-id">${r.inv||'—'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td><td>${fmt(r.due)}</td><td style="font-weight:700;color:#4E86DE">${fmt(r.shipped)}</td><td><span class="badge badge-sent">📦 ส่งแล้ว</span></td></tr>`).join('')||`<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
+    return;
+  }
+  if(tab==='overdue'){
+    const rows=d.overdue||[];
+    thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>รายละเอียด</th><th>Due เดิม</th><th>Stock</th><th>Balance PO</th><th>สถานะ</th></tr>`;
+    tbody.innerHTML=rows.map((r,i)=>`<tr><td style="color:var(--text-muted);font-size:10px">${i+1}</td><td style="font-size:11px;font-weight:600">${r.c}</td><td class="inv-id">${r.inv||'—'}</td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td><td><span style="color:#f87171;font-weight:700">${thaiDate(r.origDue||r.dk)}</span></td><td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td><td style="font-weight:700;color:var(--red)">${fmt(r.balPO)}</td><td><span class="badge badge-red">🔴 ค้างส่ง</span></td></tr>`).join('')||`<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการค้างส่ง 🎉</td></tr>`;
+    return;
+  }
+  if(tab==='late'){
+    const rows=d.late_list||[];
+    thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>รายละเอียด</th><th>Due เดิม</th><th>วันที่ส่ง</th><th>Shipment</th><th>สถานะ</th></tr>`;
+    tbody.innerHTML=rows.map((r,i)=>`<tr><td style="color:var(--text-muted);font-size:10px">${i+1}</td><td style="font-size:11px;font-weight:600">${r.c}</td><td class="inv-id">${r.inv||'—'}</td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td><td style="font-weight:600;color:var(--amber)">${thaiDate(r.origDue)}</td><td style="font-weight:600">${thaiDate(r.shipDate)}</td><td style="font-weight:700;color:var(--green)">${fmt(r.shipped)}</td><td><span class="badge badge-amber">⏰ ล่าช้า</span></td></tr>`).join('')||`<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการล่าช้า 🎉</td></tr>`;
+    return;
+  }
+  let rows=tab==='ready'?(d.ready||[]).map(r=>({...r,status:'ready'})):(d.not_ready||[]).map(r=>({...r,status:'not_ready'}));
+  thead.innerHTML=`<tr><th>#</th><th>ลูกค้า</th><th>Inv ID</th><th>รายละเอียด</th><th>Due</th><th>Stock</th><th>ขาด</th><th>สถานะ</th></tr>`;
+  tbody.innerHTML=rows.map((r,i)=>{
+    const sh=r.status==='not_ready'?(r.sh||0):0;
+    return `<tr><td style="color:var(--text-muted);font-size:10px">${i+1}</td><td style="font-size:11px;font-weight:600">${r.c}</td><td class="inv-id">${r.inv||'—'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.d}</td><td>${fmt(r.due)}</td><td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td><td>${r.status==='not_ready'&&sh>0?`<div style="font-weight:700;color:var(--red);font-size:12px">${fmt(sh)}</div><div class="shortage-bar"><div class="shortage-fill" style="width:100%"></div></div>`:`<span class="badge badge-green">Stock พอ</span>`}</td><td>${r.status==='ready'?'<span class="badge badge-green">✅ พร้อมส่ง</span>':'<span class="badge badge-red">❌ ไม่พร้อม</span>'}</td></tr>`;
+  }).join('')||`<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-muted)">ไม่มีรายการ</td></tr>`;
+}
+
+// ─── TABLE ───
+function filterTable(f) {
+  ['all','yd','td','tm'].forEach(x=>document.getElementById('btn-'+x).classList.toggle('active',x===f));
+  renderTable(f);
+}
+function renderTable(filter) {
+  const allDates=Object.keys(DATA).sort();
+  let dates;
+  if(filter==='all')      dates=allDates.filter(d=>d<=TOMORROW);
+  else if(filter==='yd')  dates=[YESTERDAY];
+  else if(filter==='td')  dates=[TODAY];
+  else if(filter==='tm')  dates=[TOMORROW];
+  else dates=allDates.filter(d=>d<=TOMORROW);
+
+  let rows=[];
+  dates.forEach(dk=>{
+    (DATA[dk]?.not_ready||[]).forEach(item=>rows.push({...item,dk,_rowType:'not_ready',_sortVal:item.sh||0}));
+    if(dk===YESTERDAY)(DATA[dk]?.overdue||[]).forEach(item=>rows.push({...item,dk,_rowType:'overdue',_sortVal:Math.abs(item.balPO||0)}));
+  });
+  rows.sort((a,b)=>a._sortVal-b._sortVal);
+  const maxVal=Math.max(...rows.map(x=>x._sortVal),1);
+
+  const tbody=document.getElementById('notReadyBody');
+  tbody.innerHTML=rows.map((r,idx)=>{
+    const dateLabel=r.dk===TODAY?'วันนี้':r.dk===YESTERDAY?'เมื่อวาน':r.dk===TOMORROW?'พรุ่งนี้':thaiDate(r.dk);
+    const dateColor=r.dk===TODAY?'var(--blue)':r.dk<TODAY?'var(--text-dim)':'var(--amber)';
+    let shortCell,statusCell;
+    if(r._rowType==='overdue'){
+      const absV=Math.abs(r.balPO||0);
+      const pct=Math.min(100,Math.round((absV/maxVal)*100));
+      shortCell=absV>0?`<div style="font-weight:700;color:#f87171;font-size:11.5px">${fmt(absV)}</div><div class="shortage-bar"><div class="shortage-fill" style="width:${pct}%;background:#f87171"></div></div>`:`<span style="font-size:10px;color:var(--text-dim)">—</span>`;
+      statusCell=`<span class="badge badge-red">🔴 ค้างส่ง</span>`;
+    } else {
+      const sh=r.sh||0,pct=Math.min(100,Math.round((sh/maxVal)*100));
+      shortCell=sh>0?`<div style="font-weight:700;color:var(--red);font-size:11.5px">${fmt(sh)}</div><div class="shortage-bar"><div class="shortage-fill" style="width:${pct}%"></div></div>`:`<span class="badge badge-green">Stock พอ</span>`;
+      statusCell=`<span class="badge badge-red">❌ ไม่พร้อม</span>`;
+    }
+    return `<tr>
+      <td style="color:var(--text-muted);font-size:10px;font-weight:600">${idx+1}</td>
+      <td style="font-size:11px;font-weight:600">${r.c}</td>
+      <td class="inv-id">${r.inv||'—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.d}">${r.d}</td>
+      <td><span style="font-size:10.5px;font-weight:600;color:${dateColor}">${dateLabel}</span></td>
+      <td>${fmt(r.due)}</td>
+      <td style="font-weight:600;color:${(r.stock||0)>0?'var(--green)':'var(--text-muted)'}">${fmt(r.stock)}</td>
+      <td>${shortCell}</td>
+      <td>${statusCell}</td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-muted)">ไม่มีรายการที่ยังไม่พร้อม 🎉</td></tr>`;
+}
+
+// ─── FILE HANDLING ───
+async function onFileSelected(input) {
+  const file=input.files[0]; if(!file) return;
+  const st=document.getElementById('gsStatus');
+  st.style.color='rgba(10,20,50,.45)';
+  st.textContent=`⏳ กำลังอ่านไฟล์ "${file.name}"...`;
+  try {
+    const buffer=await file.arrayBuffer();
+    _savedBytes=new Uint8Array(buffer); _lastFileName=file.name;
+    document.getElementById('srcFile').textContent=file.name;
+    await parseExcelFileFromBytes(_savedBytes,_lastFileName);
+  } catch(e) { st.textContent=`❌ อ่านไฟล์ไม่ได้: ${e.message}`; st.style.color='#f87171'; }
+}
+async function fetchData() {
+  if(_savedBytes) await parseExcelFileFromBytes(_savedBytes,_lastFileName||'file.xlsx');
+  else { const st=document.getElementById('gsStatus'); st.textContent='⚠️ กรุณาเลือกไฟล์ก่อน'; st.style.color='#f59e0b'; }
+}
+
+async function parseExcelFileFromBytes(uint8Array, fileName) {
+  const btn=document.getElementById('gsBtn'),st=document.getElementById('gsStatus');
+  btn.disabled=true; st.style.color='rgba(10,20,50,.45)'; st.textContent='⏳ กำลังประมวลผล...';
+  try {
+    const workbook=XLSX.read(uint8Array,{type:'array',cellDates:false});
+    const invMap={};
+    const invSheetName=workbook.SheetNames.find(n=>n.toLowerCase().includes('inv balance')||n.toLowerCase().includes('inv_balance'));
+    if(invSheetName){
+      const invRaw=XLSX.utils.sheet_to_json(workbook.Sheets[invSheetName],{header:1,defval:null,raw:true});
+      let hRow=-1,colInvId=-1,colAvail=-1;
+      for(let r=0;r<Math.min(invRaw.length,10);r++){
+        const row=invRaw[r]; if(!row) continue;
+        for(let c=0;c<row.length;c++){
+          const v=row[c]?String(row[c]).trim().toLowerCase():'';
+          if(v==='inventory id'){colInvId=c;hRow=r;}
+          if(v==='available'){colAvail=c;}
+        }
+        if(hRow===r&&colInvId>=0&&colAvail>=0) break;
+      }
+      if(hRow>=0&&colInvId>=0&&colAvail>=0){
+        for(let r=hRow+1;r<invRaw.length;r++){
+          const row=invRaw[r]; if(!row) continue;
+          const id=row[colInvId]?String(row[colInvId]).trim():'';
+          const qty=parseFloat(row[colAvail]);
+          if(id&&!isNaN(qty)) invMap[id]=qty;
+        }
+      }
+    }
+
+    const sheetName=workbook.SheetNames.find(n=>n.includes("SAHA")||n.includes("Plan"))||workbook.SheetNames[0];
+    const ws=workbook.Sheets[sheetName];
+    const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    const EXCEL_EPOCH=new Date(1899,11,30).getTime();
+    const dateRow=raw[5]||[];
+    const dateCols={};
+    for(let c=0;c<dateRow.length;c++){
+      const v=dateRow[c];
+      if(v instanceof Date){
+        const yr=v.getFullYear(),mo=String(v.getMonth()+1).padStart(2,'0'),dy=String(v.getDate()).padStart(2,'0');
+        dateCols[c]=`${yr}-${mo}-${dy}`;
+      } else if(typeof v==='number'&&v>40000&&v<70000){
+        const d=new Date(EXCEL_EPOCH+v*86400000);
+        const yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0');
+        dateCols[c]=`${yr}-${mo}-${dy}`;
+      }
+    }
+    if(Object.keys(dateCols).length===0) throw new Error('ไม่พบคอลัมน์วันที่ในไฟล์');
+
+    const sortedDateCols=Object.entries(dateCols).map(([c,ds])=>[parseInt(c),ds]).sort((a,b)=>a[1].localeCompare(b[1]));
+    const allDateStrs=sortedDateCols.map(([c,ds])=>ds);
+    const safeNum=v=>{const f=parseFloat(v);return isNaN(f)?0:f;};
+
+    const dataOut={};
+    allDateStrs.forEach(d=>{dataOut[d]={r:0,n:0,ov:0,l:0,sent:0,ready:[],not_ready:[],overdue:[],late_list:[],sent_list:[]};});
+
+    let i=6;
+    while(i<raw.length){
+      const row=raw[i];
+      if(!row){i++;continue;}
+      const itemNo=row[0];
+      const rowLabel=row[9]?String(row[9]).trim():'';
+      if(itemNo!==null&&itemNo!==undefined&&String(itemNo).trim()!==''&&rowLabel==='Due'){
+        const customer=row[1]?String(row[1]).trim():'';
+        const detail=row[3]?String(row[3]).trim():'';
+        const dueByDate={};
+        for(const[c,ds] of sortedDateCols){const v=safeNum(row[c]);if(v>0)dueByDate[ds]=v;}
+        let invId='';
+        const shipByDate={},balPOByDate={};
+        let stockQty=0;
+        let j=i+1;
+        while(j<raw.length){
+          const sr=raw[j]; if(!sr){j++;continue;}
+          const srItem=sr[0];
+          if(srItem!==null&&srItem!==undefined&&String(srItem).trim()!==''&&sr[9]==='Due') break;
+          const srLabel=sr[9]?String(sr[9]).trim():'';
+          if((srLabel==='Update Stock'||srLabel==='Inventory ID')&&!invId&&sr[4]) invId=String(sr[4]).trim();
+          if(srLabel==='Shipment'){for(const[c,ds] of sortedDateCols){const v=safeNum(sr[c]);if(v!==0)shipByDate[ds]=(shipByDate[ds]||0)+v;}}
+          if(srLabel==='Balance PO'){for(const[c,ds] of sortedDateCols){const v=sr[c];if(v!==null&&v!==undefined&&v!=='')balPOByDate[ds]=safeNum(v);}}
+          j++;
+        }
+        stockQty=(invId&&invMap[invId]!==undefined)?invMap[invId]:0;
+        for(const[dueDate,dueQty] of Object.entries(dueByDate)){
+          if(!dataOut[dueDate]) continue;
+          const shipped=shipByDate[dueDate]||0;
+          const balPO=balPOByDate.hasOwnProperty(dueDate)?balPOByDate[dueDate]:null;
+          const entry={c:customer,d:detail,inv:invId,due:dueQty,stock:stockQty,dk:dueDate};
+          if(dueDate<TODAY){
+            if(shipped>0&&shipped>=dueQty){dataOut[dueDate].sent+=1;dataOut[dueDate].sent_list.push({...entry,shipped});continue;}
+            if(balPO!==null&&balPO<0){
+              const ovEntry={...entry,origDue:dueDate,balPO};
+              dataOut[dueDate].ov+=1;dataOut[dueDate].overdue.push({...ovEntry,dk:dueDate});
+              for(const[c2,ds2] of sortedDateCols){
+                if(ds2<=dueDate) continue; if(ds2>TOMORROW) break; if(!dataOut[ds2]) continue;
+                const balOnDs2=balPOByDate.hasOwnProperty(ds2)?balPOByDate[ds2]:null;
+                const shipOnDs2=shipByDate[ds2]||0;
+                if(balOnDs2!==null&&balOnDs2>=0&&shipOnDs2>0){
+                  const prevDate=sortedDateCols.find(([c3,ds3])=>ds3<ds2&&balPOByDate.hasOwnProperty(ds3)&&balPOByDate[ds3]<0);
+                  if(prevDate){const alreadyLate=(dataOut[ds2].late_list||[]).some(x=>x.inv===invId&&x.origDue===dueDate);if(!alreadyLate){dataOut[ds2].l+=1;dataOut[ds2].late_list.push({...entry,dk:ds2,origDue:dueDate,shipDate:ds2,shipped:shipOnDs2});}}
+                  break;
+                }
+                if(balOnDs2!==null&&balOnDs2>=0) break;
+                if(ds2>=TODAY){const alreadyOv=(dataOut[ds2].overdue||[]).some(x=>x.inv===invId&&x.origDue===dueDate);if(!alreadyOv){dataOut[ds2].ov+=1;dataOut[ds2].overdue.push({...ovEntry,dk:ds2,balPO:balOnDs2||balPO});}}
+              }
+              continue;
+            }
+            if(shipped>0&&shipped<dueQty){dataOut[dueDate].sent+=1;dataOut[dueDate].sent_list.push({...entry,shipped});continue;}
+            continue;
+          } else {
+            if(dueDate===TODAY&&shipped>0&&shipped>=dueQty){dataOut[dueDate].sent+=1;dataOut[dueDate].sent_list.push({...entry,shipped});}
+            else if(stockQty>=dueQty){dataOut[dueDate].r+=1;dataOut[dueDate].ready.push({...entry});}
+            else{const sh=dueQty-stockQty;dataOut[dueDate].n+=1;dataOut[dueDate].not_ready.push({...entry,sh});}
+          }
+        }
+        i=j; continue;
+      }
+      i++;
+    }
+
+    const now=new Date();
+    const t=now.toLocaleTimeString('th-TH');
+    const dt=now.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+    const luEl=document.getElementById('lastUpdatedBadge');
+    if(luEl) luEl.textContent=`${t}`;
+
+    const newHash=hashData(dataOut);
+    if(newHash!==_lastHash){
+      DATA=dataOut; _lastHash=newHash;
+      document.getElementById('srcFile').textContent=fileName;
+      const hasData=Object.keys(DATA).some(d=>DATA[d].r+DATA[d].n+DATA[d].ov+DATA[d].sent>0);
+      if(!hasData){st.textContent='⚠️ ไม่พบข้อมูลในไฟล์';st.style.color='#f87171';}
+      else{
+        if(barChartInst) barChartInst.destroy();
+        donutInsts.forEach(c=>c&&c.destroy());
+        renderAll();
+        pushToGist(DATA,fileName);
+        const invCount=Object.keys(invMap).length;
+        st.textContent=`✅ ${Object.keys(DATA).length} วัน | Stock ${invCount} รายการ | ${t}`;
+        st.style.color='#34d399';
+      }
+    } else {st.textContent=`✅ ข้อมูลไม่เปลี่ยนแปลง (${t})`;st.style.color='#34d399';}
+  } catch(e){
+    const st=document.getElementById('gsStatus');
+    st.textContent=`❌ ${e.message}`;st.style.color='#f87171';
+    console.error(e);
+  } finally { btn.disabled=false; }
+}
+
+// drag & drop
+(function(){
+  const area=document.getElementById('filePickerArea'),input=document.getElementById('fileInput');
+  area.addEventListener('dragover',e=>{e.preventDefault();area.style.borderColor='rgba(37,99,235,.8)';area.style.background='rgba(37,99,235,.12)';});
+  area.addEventListener('dragleave',()=>{area.style.borderColor='';area.style.background='';});
+  area.addEventListener('drop',e=>{
+    e.preventDefault();area.style.borderColor='';area.style.background='';
+    const file=e.dataTransfer?.files[0];
+    if(file&&(file.name.endsWith('.xlsx')||file.name.endsWith('.xls')||file.name.endsWith('.xlsm'))){
+      const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;onFileSelected(input);
+    }
+  });
+})();
+
+// auto-refresh
+let _arTimer=null,_arCountdownTimer=null,_arSecondsLeft=0,_arTotalSeconds=0;
+function setAutoRefresh(val){
+  if(_arTimer){clearInterval(_arTimer);_arTimer=null;}
+  if(_arCountdownTimer){clearInterval(_arCountdownTimer);_arCountdownTimer=null;}
+  const cdEl=document.getElementById('arCountdown');
+  if(val==='0'){cdEl.innerHTML='';return;}
+  const secs=parseInt(val);_arTotalSeconds=secs;_arSecondsLeft=secs;
+  function updateCountdown(){
+    const mins=Math.floor(_arSecondsLeft/60),s=_arSecondsLeft%60;
+    cdEl.innerHTML=`<span class="pulse"></span> refresh ใน ${mins>0?`${mins}:${String(s).padStart(2,'0')}`:`${s}s`}`;
+    _arSecondsLeft--;if(_arSecondsLeft<0)_arSecondsLeft=_arTotalSeconds;
+  }
+  updateCountdown();
+  _arCountdownTimer=setInterval(updateCountdown,1000);
+  _arTimer=setInterval(()=>{_arSecondsLeft=_arTotalSeconds;fetchData();},secs*1000);
+}
+
+// ─── GIST SYNC ───
+const GIST_FILENAME='delivery_data.json';
+let _gistId=localStorage.getItem('gist_id')||'';
+let _gistToken=localStorage.getItem('gist_token')||'';
+let _appMode=localStorage.getItem('app_mode')||'X';
+let _yTimer=null,_ySecsLeft=30,_yTotalSecs=30,_gistEtag='';
+
+function setMode(mode){_appMode=mode;localStorage.setItem('app_mode',mode);applyMode(mode);}
+function applyMode(mode){
+  document.getElementById('modeXBtn').classList.toggle('active',mode==='X');
+  document.getElementById('modeYBtn').classList.toggle('active',mode==='Y');
+  document.getElementById('panelX').style.display=mode==='X'?'':'none';
+  document.getElementById('panelY').style.display=mode==='Y'?'':'none';
+  if(mode==='Y'){stopYSync();startYSync(parseInt(document.getElementById('ySyncSelect').value)||30);}
+  else stopYSync();
+}
+function saveGistConfig(){
+  _gistId=document.getElementById('gistId').value.trim();
+  _gistToken=document.getElementById('gistToken').value.trim();
+  localStorage.setItem('gist_id',_gistId);localStorage.setItem('gist_token',_gistToken);
+  const st=document.getElementById('cfgStatus');
+  if(!_gistId||!_gistToken){st.textContent='⚠️ กรอก Gist ID และ Token';st.style.color='#f59e0b';return;}
+  st.textContent='✅ บันทึกแล้ว';st.style.color='#34d399';
+  setTimeout(()=>{st.textContent='';},2500);
+  if(_appMode==='Y'){stopYSync();startYSync(parseInt(document.getElementById('ySyncSelect').value)||30);}
+}
+async function pushToGist(dataObj,fileName){
+  if(!_gistId||!_gistToken) return;
+  try {
+    const payload={meta:{pushedAt:new Date().toISOString(),fileName},data:dataObj};
+    await fetch(`https://api.github.com/gists/${_gistId}`,{
+      method:'PATCH',
+      headers:{'Authorization':`token ${_gistToken}`,'Content-Type':'application/json'},
+      body:JSON.stringify({files:{[GIST_FILENAME]:{content:JSON.stringify(payload)}}})
+    });
+  } catch(e){console.warn('pushToGist error:',e);}
+}
+async function pullFromGist(){
+  const st=document.getElementById('yStatus');
+  if(!_gistId){if(st){st.textContent='⚠️ ยังไม่ได้ตั้งค่า Gist ID';st.style.color='#f59e0b';}return;}
+  try {
+    const headers={'Accept':'application/vnd.github.v3+json'};
+    if(_gistToken) headers['Authorization']=`token ${_gistToken}`;
+    if(_gistEtag) headers['If-None-Match']=_gistEtag;
+    const res=await fetch(`https://api.github.com/gists/${_gistId}`,{headers});
+    if(res.status===304){if(st){st.textContent=`✅ ข้อมูลเดิม (${new Date().toLocaleTimeString('th-TH')})`;st.style.color='#34d399';}return;}
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    _gistEtag=res.headers.get('etag')||'';
+    const gist=await res.json();
+    const file=gist.files&&gist.files[GIST_FILENAME];
+    if(!file){if(st){st.textContent='⚠️ ยังไม่มีข้อมูลใน Gist';st.style.color='#f59e0b';}return;}
+    const raw=JSON.parse(file.content);
+    if(!raw.data) throw new Error('ไม่พบ data ใน Gist');
+    const newHash=hashData(raw.data);
+    if(newHash!==_lastHash){
+      DATA=raw.data;_lastHash=newHash;_dataLoaded=true;
+      if(barChartInst) barChartInst.destroy();
+      donutInsts.forEach(c=>c&&c.destroy());
+      renderAll();
+    }
+    const pushedAt=raw.meta?.pushedAt?new Date(raw.meta.pushedAt).toLocaleTimeString('th-TH'):'?';
+    if(st){st.textContent=`✅ sync ${new Date().toLocaleTimeString('th-TH')} | ส่งเมื่อ ${pushedAt}`;st.style.color='#34d399';}
+  } catch(e){if(st){st.textContent=`❌ ${e.message}`;st.style.color='#f87171';}console.warn(e);}
+}
+function setYSync(val){stopYSync();startYSync(parseInt(val)||30);}
+function startYSync(secs){
+  _yTotalSecs=secs;_ySecsLeft=0;
+  const cdEl=document.getElementById('ySyncCountdown');
+  function tick(){
+    if(_ySecsLeft<=0){pullFromGist();_ySecsLeft=_yTotalSecs;}
+    const m=Math.floor(_ySecsLeft/60),s=_ySecsLeft%60;
+    if(cdEl) cdEl.innerHTML=`<span class="pulse"></span> sync ใน ${m>0?`${m}:${String(s).padStart(2,'0')}`:`${s}s`}`;
+    _ySecsLeft--;
+  }
+  tick();_yTimer=setInterval(tick,1000);
+}
+function stopYSync(){if(_yTimer){clearInterval(_yTimer);_yTimer=null;}}
+</script>
+</body>
+</html>
